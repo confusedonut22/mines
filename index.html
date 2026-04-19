@@ -369,6 +369,49 @@
   }
   .stat-val.accent { color: var(--gem); }
 
+  /* Payout table */
+  .payout-table-wrap {
+    margin-bottom: 18px;
+    border: 1px solid var(--line);
+    background: var(--bg-0);
+  }
+  .payout-table-head {
+    display: grid;
+    grid-template-columns: 40px 1fr 1fr;
+    padding: 6px 10px;
+    border-bottom: 1px solid var(--line);
+    font-size: 9px;
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+  }
+  .payout-table-body {
+    max-height: 160px;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: var(--line) transparent;
+  }
+  .payout-row {
+    display: grid;
+    grid-template-columns: 40px 1fr 1fr;
+    padding: 5px 10px;
+    font-size: 11px;
+    font-variant-numeric: tabular-nums;
+    color: var(--ink-dim);
+    border-bottom: 1px solid var(--line-soft);
+    transition: background 0.1s;
+  }
+  .payout-row:last-child { border-bottom: none; }
+  .payout-row .gems { color: var(--ink-faint); }
+  .payout-row .mult { color: var(--ink); font-weight: 500; }
+  .payout-row .cashout { color: var(--gem); }
+  .payout-row.current {
+    background: rgba(90, 217, 179, 0.07);
+  }
+  .payout-row.current .mult { color: var(--gem-hot); }
+  .payout-row.current .cashout { color: var(--gem-hot); font-weight: 700; }
+  .payout-row.future { opacity: 0.5; }
+
   /* Action button */
   .btn {
     width: 100%;
@@ -825,6 +868,16 @@
         </div>
       </div>
 
+      <!-- Payout table -->
+      <div class="payout-table-wrap">
+        <div class="payout-table-head">
+          <span>Gems</span>
+          <span>Mult</span>
+          <span>Payout</span>
+        </div>
+        <div class="payout-table-body" id="payoutTable"></div>
+      </div>
+
       <!-- Action button -->
       <button class="btn" id="primaryBtn" onclick="primaryAction()">Place Bet</button>
       <div class="btn-split">
@@ -921,7 +974,7 @@
   function multiplierAt(N, M, k) {
     if (k === 0) return 1;
     if (k > N - M) return Infinity;
-    return 0.99 * comb(N, k) / comb(N - M, k);
+    return Math.ceil(0.99 * comb(N, k) / comb(N - M, k) * 100) / 100;
   }
 
   // ===== Grid sizing =====
@@ -1143,6 +1196,31 @@
   }
 
   // ===== UI updates =====
+  function updatePayoutTable() {
+    const N = state.gridSize * state.gridSize;
+    const M = state.mines;
+    const maxGems = N - M;
+    const k = state.revealed.size;
+    const tbody = document.getElementById('payoutTable');
+    let html = '';
+    for (let i = 1; i <= maxGems; i++) {
+      const mult = multiplierAt(N, M, i);
+      const payout = state.bet * mult;
+      const isCurrent = state.playing && !state.ended && i === k;
+      const isPast = state.playing && !state.ended && i < k;
+      html += `<div class="payout-row${isCurrent ? ' current' : ''}${isPast ? ' future' : ''}">
+        <span class="gems">${i}</span>
+        <span class="mult">${mult.toFixed(2)}×</span>
+        <span class="cashout">$${payout.toFixed(2)}</span>
+      </div>`;
+    }
+    tbody.innerHTML = html;
+    if (k > 0 && k <= maxGems) {
+      const rows = tbody.querySelectorAll('.payout-row');
+      if (rows[k - 1]) rows[k - 1].scrollIntoView({ block: 'nearest' });
+    }
+  }
+
   function updateStats() {
     const total = state.gridSize * state.gridSize;
     const safeTotal = total - state.mines;
@@ -1203,6 +1281,7 @@
     }
 
     updateStats();
+    updatePayoutTable();
   }
 
   // ===== Input wiring =====
