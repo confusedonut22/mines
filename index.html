@@ -1468,26 +1468,81 @@
     return _audioCtx;
   }
 
-  // Bright water-droplet pluck — like flicking your cheek
+  // Enhanced water drop — 4-layer synthesis
   function playGemSound() {
     if (!state.soundOn) return;
     try {
       const ctx = getAudioCtx();
-      const t = ctx.currentTime;
-      // Two decaying sine partials: fundamental + octave
-      [[1380, 690, 0.28, 0.22], [2760, 1380, 0.09, 0.14]].forEach(([f0, f1, vol, dur]) => {
-        const osc  = ctx.createOscillator();
-        const gain = ctx.createGain();
-        osc.type = 'sine';
-        osc.frequency.setValueAtTime(f0, t);
-        osc.frequency.exponentialRampToValueAtTime(f1, t + dur * 0.45);
-        gain.gain.setValueAtTime(vol, t);
-        gain.gain.exponentialRampToValueAtTime(0.0001, t + dur);
-        osc.connect(gain);
-        gain.connect(ctx.destination);
-        osc.start(t);
-        osc.stop(t + dur + 0.02);
-      });
+      const t   = ctx.currentTime;
+
+      // Master bus
+      const master = ctx.createGain();
+      master.gain.value = 0.75;
+      master.connect(ctx.destination);
+
+      // Layer 1 — impact transient: brief bandpass-filtered noise "splat"
+      const impactFrames = Math.floor(ctx.sampleRate * 0.038);
+      const impactBuf    = ctx.createBuffer(1, impactFrames, ctx.sampleRate);
+      const impactData   = impactBuf.getChannelData(0);
+      for (let i = 0; i < impactFrames; i++) impactData[i] = Math.random() * 2 - 1;
+      const impactSrc    = ctx.createBufferSource();
+      impactSrc.buffer   = impactBuf;
+      const impactFilter = ctx.createBiquadFilter();
+      impactFilter.type  = 'bandpass';
+      impactFilter.frequency.value = 2200;
+      impactFilter.Q.value         = 0.6;
+      const impactGain   = ctx.createGain();
+      impactGain.gain.setValueAtTime(0.18, t);
+      impactGain.gain.exponentialRampToValueAtTime(0.0001, t + 0.038);
+      impactSrc.connect(impactFilter);
+      impactFilter.connect(impactGain);
+      impactGain.connect(master);
+      impactSrc.start(t);
+      impactSrc.stop(t + 0.04);
+
+      // Layer 2 — primary bubble tone: fast-attack sine sweep high→low
+      // This is the defining "plop" of a water drop
+      const osc1  = ctx.createOscillator();
+      const gain1 = ctx.createGain();
+      osc1.type = 'sine';
+      osc1.frequency.setValueAtTime(950, t);
+      osc1.frequency.exponentialRampToValueAtTime(185, t + 0.14);
+      gain1.gain.setValueAtTime(0.0001, t);
+      gain1.gain.linearRampToValueAtTime(0.55, t + 0.004); // nearly instant attack
+      gain1.gain.exponentialRampToValueAtTime(0.0001, t + 0.24);
+      osc1.connect(gain1);
+      gain1.connect(master);
+      osc1.start(t);
+      osc1.stop(t + 0.26);
+
+      // Layer 3 — harmonic partial: adds brightness and sparkle
+      const osc2  = ctx.createOscillator();
+      const gain2 = ctx.createGain();
+      osc2.type = 'sine';
+      osc2.frequency.setValueAtTime(1900, t + 0.003);
+      osc2.frequency.exponentialRampToValueAtTime(370, t + 0.11);
+      gain2.gain.setValueAtTime(0.0001, t + 0.003);
+      gain2.gain.linearRampToValueAtTime(0.20, t + 0.008);
+      gain2.gain.exponentialRampToValueAtTime(0.0001, t + 0.17);
+      osc2.connect(gain2);
+      gain2.connect(master);
+      osc2.start(t + 0.003);
+      osc2.stop(t + 0.19);
+
+      // Layer 4 — echo ripple: quieter second bubble as surface settles
+      const osc3  = ctx.createOscillator();
+      const gain3 = ctx.createGain();
+      osc3.type = 'sine';
+      osc3.frequency.setValueAtTime(620, t + 0.19);
+      osc3.frequency.exponentialRampToValueAtTime(145, t + 0.32);
+      gain3.gain.setValueAtTime(0.0001, t + 0.19);
+      gain3.gain.linearRampToValueAtTime(0.18, t + 0.194);
+      gain3.gain.exponentialRampToValueAtTime(0.0001, t + 0.40);
+      osc3.connect(gain3);
+      gain3.connect(master);
+      osc3.start(t + 0.19);
+      osc3.stop(t + 0.42);
+
     } catch (_) { /* silently fail on blocked contexts */ }
   }
 
