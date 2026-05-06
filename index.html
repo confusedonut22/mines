@@ -1468,82 +1468,39 @@
     return _audioCtx;
   }
 
-  // Enhanced water drop — 4-layer synthesis
+  // CC0 water drop (OpenGameArt "40 CC0 water/splash/slime SFX", bubble_02.ogg)
+  // Converted to mono 22050 Hz MP3 @ 48kbps. ~2.7 KB raw.
+  const GEM_SOUND_B64 = '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';
+
+  let _gemAudioBuffer = null;
+
+  async function _loadGemBuffer() {
+    if (_gemAudioBuffer) return _gemAudioBuffer;
+    const ctx = getAudioCtx();
+    const binary = atob(GEM_SOUND_B64);
+    const bytes  = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+    _gemAudioBuffer = await ctx.decodeAudioData(bytes.buffer.slice(0));
+    return _gemAudioBuffer;
+  }
+
+  // Warm up the buffer on page load (silent — just decodes)
+  _loadGemBuffer().catch(() => {});
+
   function playGemSound() {
     if (!state.soundOn) return;
-    try {
-      const ctx = getAudioCtx();
-      const t   = ctx.currentTime;
-
-      // Master bus
-      const master = ctx.createGain();
-      master.gain.value = 0.75;
-      master.connect(ctx.destination);
-
-      // Layer 1 — impact transient: brief bandpass-filtered noise "splat"
-      const impactFrames = Math.floor(ctx.sampleRate * 0.038);
-      const impactBuf    = ctx.createBuffer(1, impactFrames, ctx.sampleRate);
-      const impactData   = impactBuf.getChannelData(0);
-      for (let i = 0; i < impactFrames; i++) impactData[i] = Math.random() * 2 - 1;
-      const impactSrc    = ctx.createBufferSource();
-      impactSrc.buffer   = impactBuf;
-      const impactFilter = ctx.createBiquadFilter();
-      impactFilter.type  = 'bandpass';
-      impactFilter.frequency.value = 2200;
-      impactFilter.Q.value         = 0.6;
-      const impactGain   = ctx.createGain();
-      impactGain.gain.setValueAtTime(0.18, t);
-      impactGain.gain.exponentialRampToValueAtTime(0.0001, t + 0.038);
-      impactSrc.connect(impactFilter);
-      impactFilter.connect(impactGain);
-      impactGain.connect(master);
-      impactSrc.start(t);
-      impactSrc.stop(t + 0.04);
-
-      // Layer 2 — primary bubble tone: fast-attack sine sweep high→low
-      // This is the defining "plop" of a water drop
-      const osc1  = ctx.createOscillator();
-      const gain1 = ctx.createGain();
-      osc1.type = 'sine';
-      osc1.frequency.setValueAtTime(950, t);
-      osc1.frequency.exponentialRampToValueAtTime(185, t + 0.14);
-      gain1.gain.setValueAtTime(0.0001, t);
-      gain1.gain.linearRampToValueAtTime(0.55, t + 0.004); // nearly instant attack
-      gain1.gain.exponentialRampToValueAtTime(0.0001, t + 0.24);
-      osc1.connect(gain1);
-      gain1.connect(master);
-      osc1.start(t);
-      osc1.stop(t + 0.26);
-
-      // Layer 3 — harmonic partial: adds brightness and sparkle
-      const osc2  = ctx.createOscillator();
-      const gain2 = ctx.createGain();
-      osc2.type = 'sine';
-      osc2.frequency.setValueAtTime(1900, t + 0.003);
-      osc2.frequency.exponentialRampToValueAtTime(370, t + 0.11);
-      gain2.gain.setValueAtTime(0.0001, t + 0.003);
-      gain2.gain.linearRampToValueAtTime(0.20, t + 0.008);
-      gain2.gain.exponentialRampToValueAtTime(0.0001, t + 0.17);
-      osc2.connect(gain2);
-      gain2.connect(master);
-      osc2.start(t + 0.003);
-      osc2.stop(t + 0.19);
-
-      // Layer 4 — echo ripple: quieter second bubble as surface settles
-      const osc3  = ctx.createOscillator();
-      const gain3 = ctx.createGain();
-      osc3.type = 'sine';
-      osc3.frequency.setValueAtTime(620, t + 0.19);
-      osc3.frequency.exponentialRampToValueAtTime(145, t + 0.32);
-      gain3.gain.setValueAtTime(0.0001, t + 0.19);
-      gain3.gain.linearRampToValueAtTime(0.18, t + 0.194);
-      gain3.gain.exponentialRampToValueAtTime(0.0001, t + 0.40);
-      osc3.connect(gain3);
-      gain3.connect(master);
-      osc3.start(t + 0.19);
-      osc3.stop(t + 0.42);
-
-    } catch (_) { /* silently fail on blocked contexts */ }
+    _loadGemBuffer().then(buf => {
+      try {
+        const ctx  = getAudioCtx();
+        const src  = ctx.createBufferSource();
+        const gain = ctx.createGain();
+        src.buffer = buf;
+        gain.gain.value = 0.8;
+        src.connect(gain);
+        gain.connect(ctx.destination);
+        src.start(0);
+      } catch (_) {}
+    }).catch(() => {});
   }
 
   // Seagull "Mine!" squawk — Finding Nemo tribute
