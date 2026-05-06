@@ -860,10 +860,27 @@
   body.popout .mode-toggle { display: none; }
 
   /* ===== REPLAY MODE ===== */
-  body.replay-mode .panel { pointer-events: none; opacity: 0.65; }
+  /* Hide elements the spec says to hide in replay */
+  body.replay-mode .balance { display: none; }
   body.replay-mode #primaryBtn,
-  body.replay-mode .btn-split { display: none; }
+  body.replay-mode .btn-split,
+  body.replay-mode .mode-toggle,
+  body.replay-mode .field:has(#betInput) { display: none; }
+  body.replay-mode .panel { pointer-events: none; }
+  body.replay-mode .replay-watch-btn { pointer-events: all; }
   body.replay-mode .replay-badge { display: flex; }
+
+  /* Replay watch button */
+  .replay-watch-btn {
+    background: linear-gradient(135deg, rgba(240,192,64,0.15) 0%, rgba(240,192,64,0.05) 100%);
+    border: 1px solid var(--brass-dark);
+    color: var(--brass);
+  }
+  .replay-watch-btn:hover:not(:disabled) {
+    background: linear-gradient(135deg, rgba(240,192,64,0.25) 0%, rgba(240,192,64,0.1) 100%);
+    border-color: var(--brass);
+  }
+  .hidden { display: none !important; }
 </style>
 </head>
 <body>
@@ -1078,6 +1095,9 @@
         <button class="btn-ghost" id="resetBtn" onclick="resetGame()">Reset</button>
       </div>
 
+      <!-- Replay-only controls (hidden in normal play) -->
+      <button class="btn replay-watch-btn hidden" id="replayWatchBtn" onclick="onWatchReplay()">Watch Replay</button>
+
     </div>
 
     <!-- RIGHT: BOARD -->
@@ -1164,28 +1184,42 @@
   // =========================================================
   const PRECISION = 1_000_000; // 1,000,000 units = 1 currency unit
 
+  // Exact currency list from Stake Engine spec
   const CurrencyMeta = {
     USD: { symbol: '$',    decimals: 2 },
-    EUR: { symbol: '€',    decimals: 2 },
-    GBP: { symbol: '£',    decimals: 2 },
     CAD: { symbol: 'CA$',  decimals: 2 },
-    AUD: { symbol: 'AU$',  decimals: 2 },
-    NZD: { symbol: 'NZ$',  decimals: 2 },
-    CHF: { symbol: 'CHF',  decimals: 2 },
-    BRL: { symbol: 'R$',   decimals: 2 },
-    INR: { symbol: '₹',    decimals: 2 },
-    MXN: { symbol: 'MX$',  decimals: 2 },
-    PHP: { symbol: '₱',    decimals: 2 },
-    THB: { symbol: '฿',    decimals: 2 },
-    ZAR: { symbol: 'R',    decimals: 2 },
-    CNY: { symbol: '¥',    decimals: 2 },
     JPY: { symbol: '¥',    decimals: 0 },
-    KRW: { symbol: '₩',    decimals: 0 },
+    EUR: { symbol: '€',    decimals: 2 },
+    RUB: { symbol: '₽',    decimals: 2 },
+    CNY: { symbol: 'CN¥',  decimals: 2 },
+    PHP: { symbol: '₱',    decimals: 2 },
+    INR: { symbol: '₹',    decimals: 2 },
     IDR: { symbol: 'Rp',   decimals: 0 },
-    VND: { symbol: '₫',    decimals: 0, symbolAfter: true },
-    SEK: { symbol: 'SEK',  decimals: 2, symbolAfter: true },
-    NOK: { symbol: 'NOK',  decimals: 2, symbolAfter: true },
+    KRW: { symbol: '₩',    decimals: 0 },
+    BRL: { symbol: 'R$',   decimals: 2 },
+    MXN: { symbol: 'MX$',  decimals: 2 },
     DKK: { symbol: 'KR',   decimals: 2, symbolAfter: true },
+    PLN: { symbol: 'zł',   decimals: 2, symbolAfter: true },
+    VND: { symbol: 'đ',    decimals: 0, symbolAfter: true },
+    TRY: { symbol: '₺',    decimals: 2 },
+    CLP: { symbol: 'CLP',  decimals: 0, symbolAfter: true },
+    ARS: { symbol: 'ARS',  decimals: 2, symbolAfter: true },
+    PEN: { symbol: 'S/',   decimals: 2 },
+    NGN: { symbol: '₦',    decimals: 2 },
+    SAR: { symbol: 'SAR',  decimals: 2, symbolAfter: true },
+    ILS: { symbol: 'ILS',  decimals: 2, symbolAfter: true },
+    AED: { symbol: 'AED',  decimals: 2, symbolAfter: true },
+    TWD: { symbol: 'NT$',  decimals: 2 },
+    NOK: { symbol: 'kr',   decimals: 2 },
+    KWD: { symbol: 'KD',   decimals: 2 },
+    JOD: { symbol: 'JD',   decimals: 2 },
+    CRC: { symbol: '₡',    decimals: 2 },
+    TND: { symbol: 'TND',  decimals: 2, symbolAfter: true },
+    SGD: { symbol: 'SG$',  decimals: 2 },
+    MYR: { symbol: 'RM',   decimals: 2 },
+    OMR: { symbol: 'OMR',  decimals: 2, symbolAfter: true },
+    QAR: { symbol: 'QAR',  decimals: 2, symbolAfter: true },
+    BHD: { symbol: 'BD',   decimals: 2 },
     XGC: { symbol: 'GC',   decimals: 2 },
     XSC: { symbol: 'SC',   decimals: 2 },
   };
@@ -1210,6 +1244,17 @@
   let betLevels = null; // { minBet, maxBet, stepBet } in units — from authenticate
   let isLoading = false;
 
+  const RGS_ERROR_MESSAGES = {
+    ERR_VAL:         'Invalid request',
+    ERR_IPB:         'Insufficient balance',
+    ERR_IS:          'Session expired — please reload',
+    ERR_ATE:         'Authentication failed — please reload',
+    ERR_GLE:         'Gambling limits exceeded',
+    ERR_LOC:         'Game not available in your location',
+    ERR_GEN:         'Server error — please try again',
+    ERR_MAINTENANCE: 'Server under maintenance',
+  };
+
   async function rgsPost(path, body) {
     const resp = await fetch(`${RGS_URL}${path}`, {
       method: 'POST',
@@ -1217,8 +1262,13 @@
       body: JSON.stringify(body),
     });
     if (!resp.ok) {
-      const msg = await resp.text().catch(() => resp.statusText);
-      throw new Error(`${path} failed (${resp.status}): ${msg}`);
+      let errCode = '';
+      try {
+        const errBody = await resp.json();
+        errCode = errBody?.code || errBody?.error?.code || errBody?.statusCode || '';
+      } catch { /* ignore parse error */ }
+      const friendly = RGS_ERROR_MESSAGES[errCode] || `Connection error (${resp.status})`;
+      throw new Error(friendly);
     }
     return resp.json();
   }
@@ -1231,6 +1281,7 @@
     return rgsPost('/wallet/play', {
       sessionID: SESSION_ID,
       amount: amountUnits,
+      mode: 'BASE',
       gridSize: state.gridSize,
       mines: state.mines,
     });
@@ -1257,13 +1308,21 @@
     return resp.json();
   }
 
-  // Extract mine positions from various RGS round shapes
-  function parseMinePositions(round) {
-    const candidates = [round, ...(round?.state || []), ...(round?.events || [])];
+  // Extract mine positions from various RGS round shapes.
+  // Handles: { minePositions }, { mines }, { positions }, and nested state/round/events.
+  function parseMinePositions(resp) {
+    const stateObj = resp?.state ?? {};
+    const roundObj = resp?.round ?? {};
+    const candidates = [
+      resp,
+      roundObj,
+      stateObj,
+      ...(Array.isArray(stateObj) ? stateObj : []),
+      ...(Array.isArray(resp?.events) ? resp.events : []),
+    ].filter(Boolean);
     for (const obj of candidates) {
-      if (!obj) continue;
       if (Array.isArray(obj.minePositions)) return { positions: obj.minePositions, gridSize: obj.gridSize ?? state.gridSize };
-      if (Array.isArray(obj.mines))         return { positions: obj.mines,         gridSize: obj.gridSize ?? state.gridSize };
+      if (Array.isArray(obj.mines) && obj.mines.every(v => typeof v === 'number')) return { positions: obj.mines, gridSize: obj.gridSize ?? state.gridSize };
       if (Array.isArray(obj.positions))     return { positions: obj.positions,     gridSize: obj.gridSize ?? state.gridSize };
     }
     return null;
@@ -1434,11 +1493,12 @@
       showLoading('Placing bet…');
       try {
         const amountUnits = floatToUnits(state.bet);
-        const round = await play(amountUnits);
+        const playResult = await play(amountUnits);
         hideLoading();
 
-        // Parse mine positions from RGS response
-        const mineData = parseMinePositions(round);
+        // Play response: { balance: { amount, currency }, round: { ...game state... } }
+        const gameRound = playResult.round || playResult;
+        const mineData = parseMinePositions(gameRound);
         if (mineData) {
           state.minePositions = new Set(mineData.positions);
           if (mineData.gridSize && mineData.gridSize !== state.gridSize) {
@@ -1446,13 +1506,15 @@
           }
         }
 
-        // Update balance from RGS
-        if (round.balance !== undefined) {
-          state.balance = unitsToFloat(round.balance);
+        // Update balance from RGS (nested balance object)
+        if (playResult.balance?.amount !== undefined) {
+          state.balance = unitsToFloat(playResult.balance.amount);
+        } else if (playResult.balance !== undefined && typeof playResult.balance === 'number') {
+          state.balance = unitsToFloat(playResult.balance);
         }
-        if (round.currency) currentCurrency = round.currency;
+        if (playResult.balance?.currency) currentCurrency = playResult.balance.currency;
 
-        state.currentRound = round;
+        state.currentRound = gameRound;
 
         // Show round seed if provided
         if (round.seed || round.hash) {
@@ -1560,10 +1622,13 @@
       try {
         const result = await endRound(winUnits);
         hideLoading();
-        if (result.balance !== undefined) {
+        // End-round response: { balance: { amount, currency } }
+        if (result.balance?.amount !== undefined) {
+          state.balance = unitsToFloat(result.balance.amount);
+        } else if (typeof result.balance === 'number') {
           state.balance = unitsToFloat(result.balance);
         }
-        if (result.currency) currentCurrency = result.currency;
+        if (result.balance?.currency) currentCurrency = result.balance.currency;
       } catch (err) {
         hideLoading();
         showError('Cash out failed: ' + err.message);
@@ -1814,64 +1879,91 @@
   // =========================================================
   // 21. REPLAY MODE
   // =========================================================
+  let replayData = null; // holds fetched replay before user hits Watch
+
   async function initReplay() {
     showLoading('Loading replay…');
     try {
-      const data = await fetchReplay(REPLAY_GAME, REPLAY_VERSION, REPLAY_MODE, REPLAY_EVENT);
+      replayData = await fetchReplay(REPLAY_GAME, REPLAY_VERSION, REPLAY_MODE, REPLAY_EVENT);
       hideLoading();
-      await playReplay(data);
+      // Pre-configure state from replay data so the board is shown
+      applyReplayState(replayData);
+      renderGrid();
+      updateUI();
+      // Show Watch Replay button — spec: display Play button once loaded
+      document.getElementById('replayWatchBtn').classList.remove('hidden');
     } catch (err) {
       hideLoading();
       showError('Failed to load replay: ' + err.message);
     }
   }
 
-  async function playReplay(data) {
-    // Support { round: {...} } or flat shape
-    const round = data.round || data;
+  function applyReplayState(data) {
+    // Replay response: { payoutMultiplier, costMultiplier, state: { ...game-specific... } }
+    const gameState = data.state || data.round || data;
 
-    const mineData = parseMinePositions(round);
+    const mineData = parseMinePositions(gameState);
     if (mineData) {
       state.gridSize = mineData.gridSize;
       state.minePositions = new Set(mineData.positions);
     }
 
-    // Set bet display from replay params or round data
     if (REPLAY_AMOUNT) state.bet = unitsToFloat(REPLAY_AMOUNT);
-    else if (round.betAmount) state.bet = unitsToFloat(round.betAmount);
+    else if (gameState.betAmount) state.bet = unitsToFloat(gameState.betAmount);
+    else if (gameState.amount) state.bet = unitsToFloat(gameState.amount);
 
-    if (round.mines)    state.mines    = round.mines;
-    if (round.gridSize) state.gridSize = round.gridSize;
+    if (gameState.mines && typeof gameState.mines === 'number') state.mines = gameState.mines;
+    if (gameState.gridSize) state.gridSize = gameState.gridSize;
 
-    // Update grid selectors
     document.querySelectorAll('.grid-option').forEach(o => {
       o.classList.toggle('active', parseInt(o.dataset.size) === state.gridSize);
     });
     document.getElementById('mineInput').value  = state.mines;
     document.getElementById('mineSlider').value = state.mines;
 
+    state.playing = false;
+    state.ended = false;
+    state.revealed.clear();
+  }
+
+  async function playReplay(data) {
+    const gameState = data.state || data.round || data;
+
     state.playing = true;
     state.ended = false;
-
     renderGrid();
     updateUI();
 
-    // Step through picks
-    const picks = round.picks || round.sequence || [];
+    // Step through picks with animation delay
+    const picks = gameState.picks || gameState.sequence || gameState.revealedTiles || [];
     for (const pick of picks) {
       await new Promise(r => setTimeout(r, 500));
-      const idx = typeof pick === 'number' ? pick : (pick.index ?? pick.tile);
+      const idx = typeof pick === 'number' ? pick : (pick.index ?? pick.tile ?? pick);
       await replayReveal(idx);
     }
 
-    // Show outcome
-    const isBust = round.outcome === 'loss' || round.outcome === 'bust' || round.bust;
+    // Show outcome using payoutMultiplier from replay response if available
+    const isBust = gameState.outcome === 'loss' || gameState.outcome === 'bust' || gameState.bust;
     if (!isBust && state.revealed.size > 0) {
-      const mult = multiplierAt(state.gridSize * state.gridSize, state.mines, state.revealed.size);
+      const payoutMult = data.payoutMultiplier ?? multiplierAt(state.gridSize * state.gridSize, state.mines, state.revealed.size);
       revealAll();
-      flashMessage(`+${mult.toFixed(2)}×`, 'win', 'Cashed out');
+      flashMessage(`+${Number(payoutMult).toFixed(2)}×`, 'win', 'Cashed out');
     }
     updateUI();
+
+    // Show Watch Again button after replay completes
+    document.getElementById('replayWatchBtn').textContent = 'Watch Again';
+    document.getElementById('replayWatchBtn').classList.remove('hidden');
+  }
+
+  async function onWatchReplay() {
+    if (!replayData) return;
+    document.getElementById('replayWatchBtn').classList.add('hidden');
+    // Reset board to pre-play state
+    applyReplayState(replayData);
+    renderGrid();
+    updateUI();
+    await playReplay(replayData);
   }
 
   async function replayReveal(idx) {
@@ -2058,26 +2150,37 @@
         const auth = await authenticate();
         hideLoading();
 
-        // Apply currency + balance
-        if (auth.currency) currentCurrency = auth.currency;
-        if (auth.balance !== undefined) state.balance = unitsToFloat(auth.balance);
+        // Auth response: { balance: { amount, currency }, config: { minBet, maxBet, stepBet, defaultBetLevel, betLevels, jurisdiction }, round }
+        if (auth.balance?.currency) currentCurrency = auth.balance.currency;
+        if (auth.balance?.amount !== undefined) {
+          state.balance = unitsToFloat(auth.balance.amount);
+        } else if (typeof auth.balance === 'number') {
+          state.balance = unitsToFloat(auth.balance);
+        }
 
-        // Apply bet levels
-        if (auth.betLevels) {
-          betLevels = auth.betLevels;
-          const minF = unitsToFloat(betLevels.minBet);
-          const maxF = unitsToFloat(betLevels.maxBet);
-          // Show bet range hint
+        // Apply config (bet levels + jurisdiction)
+        const cfg = auth.config || auth; // fall back to flat auth for older RGS
+        if (cfg.minBet !== undefined || cfg.maxBet !== undefined) {
+          betLevels = cfg;
+          const minF = unitsToFloat(cfg.minBet || 0);
+          const maxF = unitsToFloat(cfg.maxBet || 0);
           const rangeEl = document.getElementById('betRange');
           rangeEl.textContent = `Min ${fmtFloat(minF)} · Max ${fmtFloat(maxF)}`;
           rangeEl.classList.add('show');
-          // Set bet input limits
           betInput.min  = minF;
           betInput.max  = maxF;
-          betInput.step = betLevels.stepBet ? unitsToFloat(betLevels.stepBet) : 0.01;
-          // Clamp current bet
-          state.bet = clampBet(state.bet);
+          betInput.step = cfg.stepBet ? unitsToFloat(cfg.stepBet) : 0.01;
+          // Use server default bet level if provided
+          if (cfg.defaultBetLevel) {
+            state.bet = clampBet(unitsToFloat(cfg.defaultBetLevel));
+          } else {
+            state.bet = clampBet(state.bet);
+          }
           betInput.value = state.bet.toFixed(2);
+        }
+        if (auth.betLevels && !auth.config) {
+          // Legacy flat shape fallback
+          betLevels = auth.betLevels;
         }
 
         // Reconnect if there's an active round
