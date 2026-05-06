@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Obsidian Mines</title>
+<title>Diamonds</title>
 <style>
   /* System font stacks — no external CDN requests (XSS policy compliance) */
   :root {
@@ -21,8 +21,8 @@
     --brass: #f0c040;
     --brass-hot: #ffd060;
     --brass-dark: #a07820;
-    --gem: #3dd9b4;
-    --gem-hot: #6ff2d4;
+    --gem: #4dc8f0;
+    --gem-hot: #7ae2ff;
     --mine: #e85c4a;
     --mine-hot: #ff7b68;
     --shadow-deep: 0 24px 60px -20px rgba(0,0,0,0.8), 0 8px 20px -8px rgba(0,0,0,0.5);
@@ -590,7 +590,7 @@
   .btn:disabled { background: var(--bg-3); color: var(--ink-faint); cursor: not-allowed; }
   .btn:disabled::before { display: none; }
   .btn.cashout { background: var(--gem); color: #0a2a20; }
-  .btn.cashout:hover { background: var(--gem-hot); box-shadow: 0 0 30px rgba(142, 247, 212, 0.4); }
+  .btn.cashout:hover { background: var(--gem-hot); box-shadow: 0 0 30px rgba(122, 226, 255, 0.4); }
   .btn-split { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px; }
   .btn-ghost {
     background: transparent;
@@ -796,7 +796,7 @@
     color: var(--ink-dim);
     white-space: nowrap;
   }
-  .history-item.win { color: var(--gem); border-color: rgba(90,217,179,0.3); }
+  .history-item.win { color: var(--gem); border-color: rgba(77,200,240,0.3); }
   .history-item.loss { color: var(--mine); border-color: rgba(232,92,74,0.3); }
 
   /* ===== RESPONSIVE ===== */
@@ -1108,17 +1108,17 @@
 <div class="modal-backdrop" id="modalBackdrop" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
   <div class="modal">
     <button class="modal-close" onclick="closeModal()" aria-label="Close">✕</button>
-    <div class="modal-title" id="modalTitle">Obsidian Mines — Rules</div>
+    <div class="modal-title" id="modalTitle">Diamonds — Rules</div>
 
     <div class="modal-section">
       <h3>How to play</h3>
-      <p>Place a bet, then reveal tiles on the grid. Each safe tile increases your multiplier. Hit a mine and you lose. Cash out at any time to claim your current payout.</p>
+      <p>Place a bet, then reveal tiles on the grid. Each diamond you find increases your multiplier. Uncover a trap and you lose your bet. Cash out at any time to claim your current payout.</p>
     </div>
 
     <div class="modal-section">
       <h3>Game info</h3>
       <div class="modal-row"><span class="label">Return to Player (RTP)</span><span class="val">99%</span></div>
-      <div class="modal-row"><span class="label">Min. mines</span><span class="val">1</span></div>
+      <div class="modal-row"><span class="label">Min. traps</span><span class="val">1</span></div>
       <div class="modal-row"><span class="label">Grid sizes</span><span class="val">5×5 · 6×6 · 7×7 · 8×8</span></div>
       <div class="modal-row"><span class="label">Max multiplier</span><span class="val" id="modalMaxMult">—</span></div>
       <div class="modal-row"><span class="label">Max win</span><span class="val" id="modalMaxWin">—</span></div>
@@ -1126,7 +1126,7 @@
 
     <div class="modal-section">
       <h3>Multiplier formula</h3>
-      <p>Multiplier = 0.99 × C(N, k) ÷ C(N−M, k), where N = total tiles, M = mines, k = gems revealed. Each pick raises the multiplier by adjusting for survival probability.</p>
+      <p>Multiplier = 0.99 × C(N, k) ÷ C(N−M, k), where N = total tiles, M = traps, k = diamonds found. Each pick raises the multiplier by adjusting for survival probability.</p>
     </div>
 
     <div class="modal-section">
@@ -1141,8 +1141,8 @@
   <!-- Header -->
   <div class="header">
     <div>
-      <div class="logo">OBSIDIAN</div>
-      <div class="logo-sub">Mines</div>
+      <div class="logo">DIAMONDS</div>
+      <div class="logo-sub">Gem Hunt</div>
     </div>
     <div class="header-right">
       <div class="replay-badge" id="replayBadge">
@@ -1261,18 +1261,18 @@
       <!-- Mines count -->
       <div class="field">
         <div class="field-label">
-          <span>Mines</span>
+          <span>Traps</span>
           <span class="hint"><span id="mineCountLabel">3</span> of <span id="maxMines">24</span></span>
         </div>
         <div class="input-wrap">
-          <input type="number" id="mineInput" value="3" min="1" aria-label="Number of mines">
+          <input type="number" id="mineInput" value="3" min="1" aria-label="Number of traps">
           <div class="chip-row">
-            <button onclick="adjMines(-1)" aria-label="Fewer mines">−</button>
-            <button onclick="adjMines(1)" aria-label="More mines">+</button>
+            <button onclick="adjMines(-1)" aria-label="Fewer traps">−</button>
+            <button onclick="adjMines(1)" aria-label="More traps">+</button>
           </div>
         </div>
         <div class="slider-wrap">
-          <input type="range" min="1" max="24" value="3" class="slider" id="mineSlider" aria-label="Mines slider">
+          <input type="range" min="1" max="24" value="3" class="slider" id="mineSlider" aria-label="Traps slider">
           <div class="slider-scale"><span>SAFE</span><span>BALANCED</span><span>HIGH RISK</span></div>
         </div>
       </div>
@@ -1375,7 +1375,7 @@
       </div>
 
       <div class="grid-container">
-        <div class="grid" id="grid" role="grid" aria-label="Mine field"></div>
+        <div class="grid" id="grid" role="grid" aria-label="Gem field"></div>
       </div>
 
       <div class="board-message" id="boardMsg" role="status" aria-live="polite">
@@ -1405,7 +1405,7 @@
   const IS_REPLAY   = params.get('replay') === 'true';
 
   // Replay-specific params (no session required per spec)
-  const REPLAY_GAME    = params.get('game') || 'obsidian-mines';
+  const REPLAY_GAME    = params.get('game') || 'diamonds';
   const REPLAY_VERSION = params.get('version') || '1';
   const REPLAY_MODE    = params.get('mode') || 'real';
   const REPLAY_EVENT   = params.get('event') || '';
@@ -1661,41 +1661,78 @@
   // 8. ICONS
   // =========================================================
   function gemSVG(size) {
+    // Brilliant-cut diamond: table → crown → girdle → pavilion → culet
+    // Outline: (8,22)→(16,10)→(32,10)→(40,22)→(24,44)
+    // Inner girdle points: IL=(20,22) IR=(28,22)
     return `<svg class="gem-icon" width="${size}" height="${size}" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
       <defs>
-        <linearGradient id="g1" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0%" stop-color="#8ef7d4"/>
-          <stop offset="100%" stop-color="#3aa085"/>
+        <linearGradient id="gTab" x1="0.3" y1="0" x2="0.7" y2="1">
+          <stop offset="0%" stop-color="#e8f8ff"/>
+          <stop offset="100%" stop-color="#a8dff5"/>
         </linearGradient>
-        <linearGradient id="g2" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stop-color="#b5fde8" stop-opacity="0.9"/>
-          <stop offset="100%" stop-color="#5ad9b3" stop-opacity="0.4"/>
+        <linearGradient id="gCtr" x1="0.5" y1="0" x2="0.5" y2="1">
+          <stop offset="0%" stop-color="#52c8f0"/>
+          <stop offset="100%" stop-color="#1478b0"/>
         </linearGradient>
       </defs>
-      <path d="M24 4 L40 18 L24 44 L8 18 Z" fill="url(#g1)" stroke="#e8ddc8" stroke-width="0.7"/>
-      <path d="M24 4 L40 18 L24 22 L8 18 Z" fill="url(#g2)"/>
-      <path d="M24 4 L24 22" stroke="#e8ddc8" stroke-width="0.5" opacity="0.4"/>
-      <path d="M8 18 L24 22 L40 18" stroke="#0b0d0f" stroke-width="0.5" opacity="0.3"/>
+      <!-- Left pavilion (dark) -->
+      <polygon points="8,22 20,22 24,44" fill="#1878b0"/>
+      <!-- Right pavilion -->
+      <polygon points="40,22 28,22 24,44" fill="#2898c8"/>
+      <!-- Centre pavilion (catches light) -->
+      <polygon points="20,22 28,22 24,44" fill="url(#gCtr)"/>
+      <!-- Left crown -->
+      <polygon points="8,22 16,10 20,22" fill="#70c4ec"/>
+      <!-- Right crown -->
+      <polygon points="40,22 32,10 28,22" fill="#48aad4"/>
+      <!-- Table (top face, brightest) -->
+      <polygon points="16,10 32,10 28,22 20,22" fill="url(#gTab)"/>
+      <!-- Outline -->
+      <polygon points="8,22 16,10 32,10 40,22 24,44" fill="none" stroke="#b8eaff" stroke-width="0.8" opacity="0.65"/>
+      <!-- Facet lines -->
+      <line x1="16" y1="10" x2="20" y2="22" stroke="#c8eeff" stroke-width="0.6" opacity="0.55"/>
+      <line x1="32" y1="10" x2="28" y2="22" stroke="#c8eeff" stroke-width="0.6" opacity="0.55"/>
+      <line x1="20" y1="22" x2="24" y2="44" stroke="#80c8e8" stroke-width="0.5" opacity="0.4"/>
+      <line x1="28" y1="22" x2="24" y2="44" stroke="#80c8e8" stroke-width="0.5" opacity="0.4"/>
+      <line x1="8" y1="22" x2="40" y2="22" stroke="#a8d8f0" stroke-width="0.4" opacity="0.35"/>
+      <!-- Highlight sparkle on table -->
+      <ellipse cx="22" cy="14" rx="2.2" ry="1.4" fill="white" opacity="0.85" transform="rotate(-18,22,14)"/>
+      <circle cx="19" cy="20" r="0.8" fill="white" opacity="0.5"/>
     </svg>`;
   }
   function mineSVG(size) {
+    // Dark cursed diamond — same silhouette as gem, but cracked with a red glowing fracture
     return `<svg class="mine-icon" width="${size}" height="${size}" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
       <defs>
-        <radialGradient id="m1" cx="0.35" cy="0.3">
-          <stop offset="0%" stop-color="#ff9a82"/>
-          <stop offset="70%" stop-color="#e85c4a"/>
-          <stop offset="100%" stop-color="#7a2418"/>
+        <radialGradient id="mFill" cx="0.45" cy="0.35" r="0.7">
+          <stop offset="0%" stop-color="#5c1414"/>
+          <stop offset="100%" stop-color="#0e0404"/>
         </radialGradient>
       </defs>
-      <g stroke="#1a0808" stroke-width="1">
-        <line x1="24" y1="4" x2="24" y2="44"/>
-        <line x1="4" y1="24" x2="44" y2="24"/>
-        <line x1="10" y1="10" x2="38" y2="38"/>
-        <line x1="38" y1="10" x2="10" y2="38"/>
-      </g>
-      <circle cx="24" cy="24" r="13" fill="url(#m1)" stroke="#1a0808" stroke-width="1"/>
-      <circle cx="20" cy="20" r="2.5" fill="#ffcfb8" opacity="0.8"/>
-      <rect x="22" y="9" width="4" height="4" fill="#3a1a10" stroke="#1a0808"/>
+      <!-- Left pavilion -->
+      <polygon points="8,22 20,22 24,44" fill="#220808"/>
+      <!-- Right pavilion -->
+      <polygon points="40,22 28,22 24,44" fill="#2e0c0c"/>
+      <!-- Centre pavilion -->
+      <polygon points="20,22 28,22 24,44" fill="url(#mFill)"/>
+      <!-- Left crown -->
+      <polygon points="8,22 16,10 20,22" fill="#380e0e"/>
+      <!-- Right crown -->
+      <polygon points="40,22 32,10 28,22" fill="#280808"/>
+      <!-- Table -->
+      <polygon points="16,10 32,10 28,22 20,22" fill="#4e1212"/>
+      <!-- Outline -->
+      <polygon points="8,22 16,10 32,10 40,22 24,44" fill="none" stroke="#b02200" stroke-width="1" opacity="0.65"/>
+      <!-- Glow aura around main crack (wide, soft) -->
+      <polyline points="25,11 29,19 22,25 26,32 24,44" stroke="#ff5533" stroke-width="5" stroke-linejoin="round" opacity="0.1" fill="none"/>
+      <!-- Main crack line -->
+      <polyline points="25,11 29,19 22,25 26,32 24,44" stroke="#ff4422" stroke-width="1.5" stroke-linejoin="round" opacity="0.92" fill="none"/>
+      <!-- Branch cracks -->
+      <line x1="29" y1="19" x2="36" y2="22" stroke="#cc3311" stroke-width="0.9" opacity="0.65"/>
+      <line x1="22" y1="25" x2="16" y2="28" stroke="#cc3311" stroke-width="0.9" opacity="0.55"/>
+      <!-- Ember nodes at crack joints -->
+      <circle cx="29" cy="19" r="1.6" fill="#ff5533" opacity="0.65"/>
+      <circle cx="22" cy="25" r="1.3" fill="#ff4422" opacity="0.55"/>
     </svg>`;
   }
 
