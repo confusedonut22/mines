@@ -3,11 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Mines — Mockup</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Major+Mono+Display&family=JetBrains+Mono:wght@400;500;700&family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;0,9..144,800;1,9..144,600&display=swap" rel="stylesheet">
+<title>Obsidian Mines</title>
 <style>
+  /* System font stacks — no external CDN requests (XSS policy compliance) */
   :root {
     --bg-0: #0b0d0f;
     --bg-1: #12161a;
@@ -34,12 +32,11 @@
   html, body {
     background: var(--bg-0);
     color: var(--ink);
-    font-family: 'JetBrains Mono', monospace;
+    font-family: 'JetBrains Mono', 'Cascadia Code', 'Fira Code', 'Consolas', monospace;
     min-height: 100vh;
     overflow-x: hidden;
   }
 
-  /* Noise + vignette texture */
   body::before {
     content: '';
     position: fixed;
@@ -70,7 +67,7 @@
     min-height: 100vh;
   }
 
-  /* Header bar — instrument panel feel */
+  /* ===== HEADER ===== */
   .header {
     display: flex;
     align-items: center;
@@ -82,7 +79,7 @@
     margin-bottom: 20px;
   }
   .logo {
-    font-family: 'Major Mono Display', monospace;
+    font-family: 'Courier New', 'Courier', monospace;
     font-size: 22px;
     letter-spacing: 0.15em;
     color: var(--brass);
@@ -94,6 +91,11 @@
     color: var(--ink-faint);
     margin-top: 2px;
     text-transform: uppercase;
+  }
+  .header-right {
+    display: flex;
+    align-items: center;
+    gap: 10px;
   }
   .balance {
     display: flex;
@@ -117,7 +119,188 @@
     font-size: 11px;
   }
 
-  /* Main layout */
+  /* Sound toggle */
+  .sound-toggle {
+    background: transparent;
+    border: 1px solid var(--line);
+    color: var(--ink-dim);
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.15s;
+    flex-shrink: 0;
+  }
+  .sound-toggle:hover { border-color: var(--brass-dark); color: var(--brass); }
+  .sound-toggle.muted { color: var(--ink-faint); }
+  .sound-toggle svg { width: 14px; height: 14px; }
+
+  /* Rules button */
+  .rules-btn {
+    background: transparent;
+    border: 1px solid var(--line);
+    color: var(--ink-dim);
+    padding: 6px 12px;
+    height: 32px;
+    font-family: inherit;
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.15s;
+    white-space: nowrap;
+  }
+  .rules-btn:hover { border-color: var(--brass-dark); color: var(--brass); }
+
+  /* Replay badge */
+  .replay-badge {
+    display: none;
+    align-items: center;
+    gap: 6px;
+    background: rgba(201, 169, 97, 0.1);
+    border: 1px solid var(--brass-dark);
+    color: var(--brass);
+    padding: 4px 10px;
+    font-size: 9px;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    height: 32px;
+  }
+
+  /* ===== LOADING OVERLAY ===== */
+  .loading-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(11, 13, 15, 0.75);
+    z-index: 100;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 14px;
+  }
+  .loading-overlay.show { display: flex; }
+  .loading-spinner {
+    width: 32px;
+    height: 32px;
+    border: 2px solid var(--line);
+    border-top-color: var(--brass);
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .loading-text {
+    font-size: 10px;
+    letter-spacing: 0.35em;
+    color: var(--ink-faint);
+    text-transform: uppercase;
+  }
+
+  /* Error toast */
+  .error-toast {
+    display: none;
+    position: fixed;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--bg-2);
+    border: 1px solid var(--mine);
+    color: var(--mine);
+    padding: 12px 24px;
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    z-index: 200;
+    max-width: 420px;
+    width: 90%;
+    text-align: center;
+    animation: toastIn 0.25s ease;
+  }
+  .error-toast.show { display: block; }
+  @keyframes toastIn { from { opacity: 0; top: 8px; } to { opacity: 1; top: 20px; } }
+
+  /* ===== RULES MODAL ===== */
+  .modal-backdrop {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.7);
+    z-index: 50;
+    align-items: center;
+    justify-content: center;
+  }
+  .modal-backdrop.show { display: flex; }
+  .modal {
+    background: var(--bg-1);
+    border: 1px solid var(--line);
+    padding: 28px;
+    max-width: 480px;
+    width: 90%;
+    max-height: 82vh;
+    overflow-y: auto;
+    position: relative;
+    scrollbar-width: thin;
+    scrollbar-color: var(--line) transparent;
+  }
+  .modal::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--brass-dark), transparent);
+  }
+  .modal-title {
+    font-family: 'Courier New', 'Courier', monospace;
+    font-size: 15px;
+    letter-spacing: 0.2em;
+    color: var(--brass);
+    margin-bottom: 20px;
+    text-transform: uppercase;
+    padding-right: 32px;
+  }
+  .modal-section { margin-bottom: 20px; }
+  .modal-section h3 {
+    font-size: 9px;
+    letter-spacing: 0.35em;
+    color: var(--ink-faint);
+    text-transform: uppercase;
+    margin-bottom: 10px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid var(--line-soft);
+  }
+  .modal-section p {
+    font-size: 12px;
+    color: var(--ink-dim);
+    line-height: 1.7;
+  }
+  .modal-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 7px 0;
+    border-bottom: 1px solid var(--line-soft);
+    font-size: 12px;
+  }
+  .modal-row:last-child { border-bottom: none; }
+  .modal-row .label { color: var(--ink-faint); }
+  .modal-row .val { color: var(--brass); font-weight: 600; font-variant-numeric: tabular-nums; }
+  .modal-close {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    background: transparent;
+    border: 1px solid var(--line);
+    color: var(--ink-dim);
+    padding: 4px 10px;
+    font-family: inherit;
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .modal-close:hover { border-color: var(--brass-dark); color: var(--brass); }
+
+  /* ===== LAYOUT ===== */
   .layout {
     display: grid;
     grid-template-columns: 340px 1fr;
@@ -125,7 +308,7 @@
     align-items: start;
   }
 
-  /* ============ LEFT CONTROL PANEL ============ */
+  /* ===== LEFT PANEL ===== */
   .panel {
     background: linear-gradient(180deg, var(--bg-1) 0%, #0e1215 100%);
     border: 1px solid var(--line);
@@ -140,7 +323,6 @@
     background: linear-gradient(90deg, transparent, var(--brass-dark), transparent);
   }
 
-  /* Mode toggle: Manual / Auto */
   .mode-toggle {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -167,10 +349,7 @@
     box-shadow: inset 0 1px 0 rgba(255,255,255,0.04);
   }
 
-  /* Field group */
-  .field {
-    margin-bottom: 18px;
-  }
+  .field { margin-bottom: 18px; }
   .field-label {
     display: flex;
     justify-content: space-between;
@@ -188,7 +367,6 @@
     font-size: 11px;
     font-variant-numeric: tabular-nums;
   }
-
   .input-wrap {
     position: relative;
     display: flex;
@@ -197,9 +375,7 @@
     border: 1px solid var(--line);
     transition: border-color 0.2s;
   }
-  .input-wrap:focus-within {
-    border-color: var(--brass-dark);
-  }
+  .input-wrap:focus-within { border-color: var(--brass-dark); }
   .input-wrap input {
     flex: 1;
     background: transparent;
@@ -211,15 +387,7 @@
     font-weight: 500;
     padding: 12px 14px;
     font-variant-numeric: tabular-nums;
-  }
-  .input-suffix {
-    display: flex;
-    align-items: center;
-    padding: 0 12px;
-    color: var(--brass);
-    font-size: 11px;
-    letter-spacing: 0.1em;
-    border-left: 1px solid var(--line);
+    min-width: 0;
   }
   .chip-row {
     display: flex;
@@ -241,7 +409,17 @@
   .chip-row button:last-child { border-right: none; }
   .chip-row button:hover { color: var(--brass); }
 
-  /* Grid size selector — THE NEW FEATURE */
+  /* Bet range indicator */
+  .bet-range {
+    font-size: 9px;
+    color: var(--ink-faint);
+    letter-spacing: 0.1em;
+    margin-top: 5px;
+    display: none;
+  }
+  .bet-range.show { display: block; }
+
+  /* Grid size selector */
   .grid-select {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
@@ -256,10 +434,7 @@
     transition: all 0.18s;
     text-align: center;
   }
-  .grid-option:hover {
-    border-color: var(--brass-dark);
-    background: var(--bg-2);
-  }
+  .grid-option:hover { border-color: var(--brass-dark); background: var(--bg-2); }
   .grid-option.active {
     border-color: var(--brass);
     background: linear-gradient(180deg, rgba(201,169,97,0.12) 0%, transparent 100%);
@@ -279,30 +454,13 @@
     height: 24px;
     margin: 0 auto 6px;
   }
-  .grid-mini span {
-    background: var(--line);
-    border-radius: 1px;
-  }
-  .grid-option.active .grid-mini span {
-    background: var(--brass-dark);
-  }
-  .grid-option .size-label {
-    font-size: 11px;
-    color: var(--ink);
-    font-weight: 500;
-    letter-spacing: 0.05em;
-  }
-  .grid-option .size-sub {
-    font-size: 8px;
-    color: var(--ink-faint);
-    letter-spacing: 0.15em;
-    margin-top: 2px;
-  }
+  .grid-mini span { background: var(--line); border-radius: 1px; }
+  .grid-option.active .grid-mini span { background: var(--brass-dark); }
+  .grid-option .size-label { font-size: 11px; color: var(--ink); font-weight: 500; letter-spacing: 0.05em; }
+  .grid-option .size-sub { font-size: 8px; color: var(--ink-faint); letter-spacing: 0.15em; margin-top: 2px; }
 
   /* Mines slider */
-  .slider-wrap {
-    padding: 6px 2px 0;
-  }
+  .slider-wrap { padding: 6px 2px 0; }
   .slider {
     -webkit-appearance: none;
     appearance: none;
@@ -350,23 +508,9 @@
     margin: 18px 0;
     border: 1px solid var(--line);
   }
-  .stat {
-    background: var(--bg-0);
-    padding: 12px;
-  }
-  .stat-label {
-    font-size: 9px;
-    color: var(--ink-faint);
-    letter-spacing: 0.25em;
-    text-transform: uppercase;
-    margin-bottom: 4px;
-  }
-  .stat-val {
-    font-size: 16px;
-    font-weight: 700;
-    font-variant-numeric: tabular-nums;
-    color: var(--ink);
-  }
+  .stat { background: var(--bg-0); padding: 12px; }
+  .stat-label { font-size: 9px; color: var(--ink-faint); letter-spacing: 0.25em; text-transform: uppercase; margin-bottom: 4px; }
+  .stat-val { font-size: 16px; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--ink); }
   .stat-val.accent { color: var(--gem); }
 
   /* Payout table */
@@ -399,27 +543,24 @@
     font-variant-numeric: tabular-nums;
     color: var(--ink-dim);
     border-bottom: 1px solid var(--line-soft);
-    transition: background 0.1s;
   }
   .payout-row:last-child { border-bottom: none; }
   .payout-row .gems { color: var(--ink-faint); }
   .payout-row .mult { color: var(--ink); font-weight: 500; }
   .payout-row .cashout { color: var(--gem); }
-  .payout-row.current {
-    background: rgba(90, 217, 179, 0.07);
-  }
+  .payout-row.current { background: rgba(90, 217, 179, 0.07); }
   .payout-row.current .mult { color: var(--gem-hot); }
   .payout-row.current .cashout { color: var(--gem-hot); font-weight: 700; }
-  .payout-row.future { opacity: 0.5; }
+  .payout-row.past { opacity: 0.5; }
 
-  /* Action button */
+  /* Action buttons */
   .btn {
     width: 100%;
     padding: 16px;
     background: var(--brass);
     color: #1a1408;
     border: none;
-    font-family: 'Fraunces', serif;
+    font-family: Georgia, 'Times New Roman', serif;
     font-weight: 800;
     font-size: 14px;
     letter-spacing: 0.3em;
@@ -436,29 +577,12 @@
     background: linear-gradient(180deg, rgba(255,255,255,0.15) 0%, transparent 50%);
     pointer-events: none;
   }
-  .btn:hover {
-    background: var(--brass-hot);
-    box-shadow: 0 0 30px rgba(232, 200, 130, 0.4);
-  }
-  .btn:disabled {
-    background: var(--bg-3);
-    color: var(--ink-faint);
-    cursor: not-allowed;
-  }
-  .btn.cashout {
-    background: var(--gem);
-    color: #0a2a20;
-  }
-  .btn.cashout:hover {
-    background: var(--gem-hot);
-    box-shadow: 0 0 30px rgba(142, 247, 212, 0.4);
-  }
-  .btn-split {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 8px;
-    margin-top: 8px;
-  }
+  .btn:hover { background: var(--brass-hot); box-shadow: 0 0 30px rgba(232, 200, 130, 0.4); }
+  .btn:disabled { background: var(--bg-3); color: var(--ink-faint); cursor: not-allowed; }
+  .btn:disabled::before { display: none; }
+  .btn.cashout { background: var(--gem); color: #0a2a20; }
+  .btn.cashout:hover { background: var(--gem-hot); box-shadow: 0 0 30px rgba(142, 247, 212, 0.4); }
+  .btn-split { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px; }
   .btn-ghost {
     background: transparent;
     border: 1px solid var(--line);
@@ -471,16 +595,10 @@
     cursor: pointer;
     transition: all 0.15s;
   }
-  .btn-ghost:hover:not(:disabled) {
-    border-color: var(--brass-dark);
-    color: var(--brass);
-  }
-  .btn-ghost:disabled {
-    opacity: 0.4;
-    cursor: not-allowed;
-  }
+  .btn-ghost:hover:not(:disabled) { border-color: var(--brass-dark); color: var(--brass); }
+  .btn-ghost:disabled { opacity: 0.4; cursor: not-allowed; }
 
-  /* ============ RIGHT: GAME BOARD ============ */
+  /* ===== RIGHT: BOARD ===== */
   .board-wrap {
     background: linear-gradient(180deg, var(--bg-1) 0%, #0a0d10 100%);
     border: 1px solid var(--line);
@@ -490,7 +608,6 @@
     display: flex;
     flex-direction: column;
   }
-  /* Corner crosshair marks — instrument/schematic vibe */
   .board-wrap::before,
   .board-wrap::after {
     content: '';
@@ -502,7 +619,6 @@
   .board-wrap::before { top: 10px; left: 10px; border-right: none; border-bottom: none; }
   .board-wrap::after { bottom: 10px; right: 10px; border-left: none; border-top: none; }
 
-  /* Status bar above board */
   .board-status {
     display: flex;
     justify-content: space-between;
@@ -515,42 +631,18 @@
     text-transform: uppercase;
     color: var(--ink-faint);
   }
-  .status-left, .status-right {
-    display: flex;
-    gap: 18px;
-  }
-  .status-item {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-  }
-  .status-dot {
-    width: 6px;
-    height: 6px;
-    border-radius: 50%;
-    background: var(--ink-faint);
-  }
+  .status-left, .status-right { display: flex; gap: 18px; }
+  .status-item { display: flex; align-items: center; gap: 6px; }
+  .status-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--ink-faint); }
   .status-dot.live { background: var(--gem); box-shadow: 0 0 8px var(--gem); animation: pulse 2s infinite; }
   .status-val { color: var(--ink); font-weight: 500; }
 
-  @keyframes pulse {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.4; }
-  }
+  @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
 
-  /* Multiplier display — prominent */
-  .multiplier {
-    text-align: center;
-    margin-bottom: 20px;
-  }
-  .multiplier-label {
-    font-size: 10px;
-    letter-spacing: 0.3em;
-    color: var(--ink-faint);
-    text-transform: uppercase;
-  }
+  .multiplier { text-align: center; margin-bottom: 20px; }
+  .multiplier-label { font-size: 10px; letter-spacing: 0.3em; color: var(--ink-faint); text-transform: uppercase; }
   .multiplier-val {
-    font-family: 'Fraunces', serif;
+    font-family: Georgia, 'Times New Roman', serif;
     font-size: 48px;
     font-weight: 600;
     font-style: italic;
@@ -572,21 +664,8 @@
   }
   .potential-row span.val { color: var(--gem); font-weight: 500; font-variant-numeric: tabular-nums; letter-spacing: 0; }
 
-  /* The grid */
-  .grid-container {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex: 1;
-    padding: 10px;
-  }
-  .grid {
-    display: grid;
-    gap: 6px;
-    width: 100%;
-    max-width: 520px;
-    aspect-ratio: 1;
-  }
+  .grid-container { display: flex; align-items: center; justify-content: center; flex: 1; padding: 10px; }
+  .grid { display: grid; gap: 6px; width: 100%; max-width: 520px; aspect-ratio: 1; }
 
   .tile {
     position: relative;
@@ -597,7 +676,6 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    font-family: 'Fraunces', serif;
     user-select: none;
     overflow: hidden;
     box-shadow: var(--shadow-inset);
@@ -609,31 +687,16 @@
     background: radial-gradient(circle at 30% 30%, rgba(255,255,255,0.06) 0%, transparent 50%);
     pointer-events: none;
   }
-  .tile:hover:not(.revealed):not(:disabled) {
+  .tile:hover:not(.revealed) {
     background: linear-gradient(145deg, #2f3a45 0%, #232b33 100%);
     border-color: var(--brass-dark);
     transform: translateY(-1px);
   }
-  .tile:active:not(.revealed) {
-    transform: translateY(0);
-  }
-
-  /* Revealed states */
-  .tile.revealed {
-    cursor: default;
-    animation: flip 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
-  }
-  .tile.gem {
-    background: linear-gradient(145deg, rgba(90, 217, 179, 0.15) 0%, rgba(90, 217, 179, 0.05) 100%);
-    border-color: rgba(90, 217, 179, 0.4);
-  }
-  .tile.mine {
-    background: linear-gradient(145deg, rgba(232, 92, 74, 0.2) 0%, rgba(232, 92, 74, 0.08) 100%);
-    border-color: rgba(232, 92, 74, 0.5);
-  }
-  .tile.unrevealed-end {
-    opacity: 0.35;
-  }
+  .tile:active:not(.revealed) { transform: translateY(0); }
+  .tile.revealed { cursor: default; animation: flip 0.35s cubic-bezier(0.34, 1.56, 0.64, 1); }
+  .tile.gem { background: linear-gradient(145deg, rgba(90,217,179,0.15) 0%, rgba(90,217,179,0.05) 100%); border-color: rgba(90,217,179,0.4); }
+  .tile.mine { background: linear-gradient(145deg, rgba(232,92,74,0.2) 0%, rgba(232,92,74,0.08) 100%); border-color: rgba(232,92,74,0.5); }
+  .tile.unrevealed-end { opacity: 0.35; }
 
   @keyframes flip {
     0% { transform: rotateY(0deg) scale(1); }
@@ -641,27 +704,22 @@
     100% { transform: rotateY(0deg) scale(1); }
   }
 
-  /* Gem icon — rough-cut stone */
   .gem-icon, .mine-icon {
     position: relative;
     z-index: 1;
     transform: scale(0);
     animation: pop 0.4s 0.15s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
   }
-  @keyframes pop {
-    to { transform: scale(1); }
-  }
+  @keyframes pop { to { transform: scale(1); } }
 
-  /* Game messages overlay */
   .board-message {
     position: absolute;
-    top: 50%;
-    left: 50%;
+    top: 50%; left: 50%;
     transform: translate(-50%, -50%);
     background: var(--bg-0);
     border: 1px solid var(--brass);
     padding: 18px 36px;
-    font-family: 'Fraunces', serif;
+    font-family: Georgia, 'Times New Roman', serif;
     font-weight: 600;
     font-size: 22px;
     letter-spacing: 0.1em;
@@ -669,11 +727,10 @@
     z-index: 10;
     box-shadow: 0 20px 60px rgba(0,0,0,0.8);
     display: none;
+    text-align: center;
+    white-space: nowrap;
   }
-  .board-message.show {
-    display: block;
-    animation: slideIn 0.4s ease;
-  }
+  .board-message.show { display: block; animation: slideIn 0.4s ease; }
   .board-message.win { color: var(--gem); border-color: var(--gem); }
   .board-message.loss { color: var(--mine); border-color: var(--mine); }
   .board-message .sub {
@@ -681,7 +738,7 @@
     font-size: 11px;
     letter-spacing: 0.3em;
     color: var(--ink-faint);
-    font-family: 'JetBrains Mono', monospace;
+    font-family: 'JetBrains Mono', 'Cascadia Code', 'Consolas', monospace;
     font-weight: 400;
     margin-top: 6px;
     text-transform: uppercase;
@@ -691,7 +748,6 @@
     to { opacity: 1; transform: translate(-50%, -50%); }
   }
 
-  /* History strip */
   .history-strip {
     margin-top: 20px;
     padding-top: 14px;
@@ -704,12 +760,7 @@
     text-transform: uppercase;
     color: var(--ink-faint);
   }
-  .history-items {
-    display: flex;
-    gap: 6px;
-    flex: 1;
-    overflow: hidden;
-  }
+  .history-items { display: flex; gap: 6px; flex: 1; overflow: hidden; }
   .history-item {
     padding: 4px 10px;
     border: 1px solid var(--line);
@@ -719,19 +770,77 @@
     color: var(--ink-dim);
     white-space: nowrap;
   }
-  .history-item.win { color: var(--gem); border-color: rgba(90, 217, 179, 0.3); }
-  .history-item.loss { color: var(--mine); border-color: rgba(232, 92, 74, 0.3); }
+  .history-item.win { color: var(--gem); border-color: rgba(90,217,179,0.3); }
+  .history-item.loss { color: var(--mine); border-color: rgba(232,92,74,0.3); }
 
-  /* Responsive */
+  /* ===== RESPONSIVE ===== */
   @media (max-width: 900px) {
     .layout { grid-template-columns: 1fr; }
     .multiplier-val { font-size: 36px; }
     .app { padding: 14px; }
     .board-wrap { padding: 18px; min-height: auto; }
   }
+
+  /* ===== POPOUT / MINI-PLAYER ===== */
+  body.popout .app { padding: 8px; max-width: 100%; }
+  body.popout .layout { grid-template-columns: 1fr; gap: 10px; }
+  body.popout .panel { padding: 12px; }
+  body.popout .board-wrap { padding: 12px; min-height: auto; }
+  body.popout .multiplier-val { font-size: 28px; }
+  body.popout .header { padding: 8px 12px; }
+  body.popout .logo { font-size: 16px; }
+  body.popout .payout-table-wrap { display: none; }
+  body.popout .stats { display: none; }
+
+  /* ===== REPLAY MODE ===== */
+  body.replay-mode .panel { pointer-events: none; opacity: 0.65; }
+  body.replay-mode #primaryBtn,
+  body.replay-mode .btn-split { display: none; }
+  body.replay-mode .replay-badge { display: flex; }
 </style>
 </head>
 <body>
+
+<!-- Loading overlay -->
+<div class="loading-overlay" id="loadingOverlay">
+  <div class="loading-spinner"></div>
+  <div class="loading-text" id="loadingText">Connecting…</div>
+</div>
+
+<!-- Error toast -->
+<div class="error-toast" id="errorToast"></div>
+
+<!-- Rules modal -->
+<div class="modal-backdrop" id="modalBackdrop" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal()" aria-label="Close">✕</button>
+    <div class="modal-title" id="modalTitle">Obsidian Mines — Rules</div>
+
+    <div class="modal-section">
+      <h3>How to play</h3>
+      <p>Place a bet, then reveal tiles on the grid. Each safe tile increases your multiplier. Hit a mine and you lose. Cash out at any time to claim your current payout.</p>
+    </div>
+
+    <div class="modal-section">
+      <h3>Game info</h3>
+      <div class="modal-row"><span class="label">Return to Player (RTP)</span><span class="val">99%</span></div>
+      <div class="modal-row"><span class="label">Min. mines</span><span class="val">1</span></div>
+      <div class="modal-row"><span class="label">Grid sizes</span><span class="val">5×5 · 6×6 · 7×7 · 8×8</span></div>
+      <div class="modal-row"><span class="label">Max multiplier</span><span class="val" id="modalMaxMult">—</span></div>
+      <div class="modal-row"><span class="label">Max win</span><span class="val" id="modalMaxWin">—</span></div>
+    </div>
+
+    <div class="modal-section">
+      <h3>Multiplier formula</h3>
+      <p>Multiplier = 0.99 × C(N, k) ÷ C(N−M, k), where N = total tiles, M = mines, k = gems revealed. Each pick raises the multiplier by adjusting for survival probability.</p>
+    </div>
+
+    <div class="modal-section">
+      <h3>Keyboard shortcuts</h3>
+      <div class="modal-row"><span class="label">Space</span><span class="val">Place Bet / Cash Out</span></div>
+    </div>
+  </div>
+</div>
 
 <div class="app">
 
@@ -739,12 +848,32 @@
   <div class="header">
     <div>
       <div class="logo">OBSIDIAN</div>
-      <div class="logo-sub">Mines / v0.1 mockup</div>
+      <div class="logo-sub">Mines</div>
     </div>
-    <div class="balance">
-      <span class="balance-label">Balance</span>
-      <span class="balance-val" id="balance">1,250.00</span>
-      <span class="balance-currency">USD</span>
+    <div class="header-right">
+      <div class="replay-badge" id="replayBadge">
+        <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><circle cx="5" cy="5" r="4" stroke="currentColor" stroke-width="1"/><polygon points="4,3 8,5 4,7" fill="currentColor"/></svg>
+        Replay
+      </div>
+      <button class="rules-btn" onclick="openModal()" aria-label="Game rules">Rules</button>
+      <button class="sound-toggle" id="soundToggle" onclick="toggleSound()" aria-label="Toggle sound">
+        <!-- Speaker on -->
+        <svg id="soundIconOn" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
+          <path d="M19.07 4.93a10 10 0 0 1 0 14.14"/>
+          <path d="M15.54 8.46a5 5 0 0 1 0 7.07"/>
+        </svg>
+        <!-- Speaker off -->
+        <svg id="soundIconOff" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none">
+          <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
+          <line x1="23" y1="9" x2="17" y2="15"/>
+          <line x1="17" y1="9" x2="23" y2="15"/>
+        </svg>
+      </button>
+      <div class="balance">
+        <span class="balance-label">Balance</span>
+        <span class="balance-val" id="balanceDisplay">$1,250.00</span>
+      </div>
     </div>
   </div>
 
@@ -754,34 +883,35 @@
     <div class="panel">
 
       <div class="mode-toggle">
-        <button class="active">Manual</button>
-        <button>Auto</button>
+        <button class="active" id="modeManual">Manual</button>
+        <button id="modeAuto">Auto</button>
       </div>
 
       <!-- Bet amount -->
       <div class="field">
         <div class="field-label">
           <span>Bet Amount</span>
-          <span class="hint" id="betUsd">$10.00</span>
+          <span class="hint" id="betHint">$10.00</span>
         </div>
         <div class="input-wrap">
-          <input type="number" id="betInput" value="10.00" step="0.01" min="0.10">
+          <input type="number" id="betInput" value="10.00" step="0.01" min="0.10" aria-label="Bet amount">
           <div class="chip-row">
-            <button onclick="adjustBet(0.5)">½</button>
-            <button onclick="adjustBet(2)">2×</button>
+            <button onclick="adjustBet(0.5)" aria-label="Half bet">½</button>
+            <button onclick="adjustBet(2)" aria-label="Double bet">2×</button>
           </div>
         </div>
+        <div class="bet-range" id="betRange"></div>
       </div>
 
-      <!-- Grid size selector — THE RIGHT-UP-FRONT FEATURE -->
+      <!-- Grid size -->
       <div class="field">
         <div class="field-label">
           <span>Grid Size</span>
           <span class="hint" id="gridHint">5 × 5 · 25 tiles</span>
         </div>
-        <div class="grid-select" id="gridSelect">
-          <div class="grid-option active" data-size="5">
-            <div class="grid-mini" style="grid-template-columns: repeat(5, 1fr); grid-template-rows: repeat(5, 1fr);">
+        <div class="grid-select" id="gridSelect" role="radiogroup" aria-label="Grid size">
+          <div class="grid-option active" data-size="5" role="radio" aria-checked="true" tabindex="0">
+            <div class="grid-mini" style="grid-template-columns:repeat(5,1fr);grid-template-rows:repeat(5,1fr)">
               <span></span><span></span><span></span><span></span><span></span>
               <span></span><span></span><span></span><span></span><span></span>
               <span></span><span></span><span></span><span></span><span></span>
@@ -791,8 +921,8 @@
             <div class="size-label">5×5</div>
             <div class="size-sub">25</div>
           </div>
-          <div class="grid-option" data-size="6">
-            <div class="grid-mini" style="grid-template-columns: repeat(6, 1fr); grid-template-rows: repeat(6, 1fr);">
+          <div class="grid-option" data-size="6" role="radio" aria-checked="false" tabindex="0">
+            <div class="grid-mini" style="grid-template-columns:repeat(6,1fr);grid-template-rows:repeat(6,1fr)">
               <span></span><span></span><span></span><span></span><span></span><span></span>
               <span></span><span></span><span></span><span></span><span></span><span></span>
               <span></span><span></span><span></span><span></span><span></span><span></span>
@@ -803,8 +933,8 @@
             <div class="size-label">6×6</div>
             <div class="size-sub">36</div>
           </div>
-          <div class="grid-option" data-size="7">
-            <div class="grid-mini" style="grid-template-columns: repeat(7, 1fr); grid-template-rows: repeat(7, 1fr);">
+          <div class="grid-option" data-size="7" role="radio" aria-checked="false" tabindex="0">
+            <div class="grid-mini" style="grid-template-columns:repeat(7,1fr);grid-template-rows:repeat(7,1fr)">
               <span></span><span></span><span></span><span></span><span></span><span></span><span></span>
               <span></span><span></span><span></span><span></span><span></span><span></span><span></span>
               <span></span><span></span><span></span><span></span><span></span><span></span><span></span>
@@ -816,8 +946,8 @@
             <div class="size-label">7×7</div>
             <div class="size-sub">49</div>
           </div>
-          <div class="grid-option" data-size="8">
-            <div class="grid-mini" style="grid-template-columns: repeat(8, 1fr); grid-template-rows: repeat(8, 1fr);">
+          <div class="grid-option" data-size="8" role="radio" aria-checked="false" tabindex="0">
+            <div class="grid-mini" style="grid-template-columns:repeat(8,1fr);grid-template-rows:repeat(8,1fr)">
               <span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span>
               <span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span>
               <span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span>
@@ -840,23 +970,19 @@
           <span class="hint"><span id="mineCountLabel">3</span> of <span id="maxMines">24</span></span>
         </div>
         <div class="input-wrap">
-          <input type="number" id="mineInput" value="3" min="1">
+          <input type="number" id="mineInput" value="3" min="1" aria-label="Number of mines">
           <div class="chip-row">
-            <button onclick="adjMines(-1)">−</button>
-            <button onclick="adjMines(1)">+</button>
+            <button onclick="adjMines(-1)" aria-label="Fewer mines">−</button>
+            <button onclick="adjMines(1)" aria-label="More mines">+</button>
           </div>
         </div>
         <div class="slider-wrap">
-          <input type="range" min="1" max="24" value="3" class="slider" id="mineSlider">
-          <div class="slider-scale">
-            <span>SAFE</span>
-            <span>BALANCED</span>
-            <span>DEGEN</span>
-          </div>
+          <input type="range" min="1" max="24" value="3" class="slider" id="mineSlider" aria-label="Mines slider">
+          <div class="slider-scale"><span>SAFE</span><span>BALANCED</span><span>DEGEN</span></div>
         </div>
       </div>
 
-      <!-- Live stats -->
+      <!-- Stats -->
       <div class="stats">
         <div class="stat">
           <div class="stat-label">Gems Hidden</div>
@@ -878,7 +1004,7 @@
         <div class="payout-table-body" id="payoutTable"></div>
       </div>
 
-      <!-- Action button -->
+      <!-- Actions -->
       <button class="btn" id="primaryBtn" onclick="primaryAction()">Place Bet</button>
       <div class="btn-split">
         <button class="btn-ghost" id="pickRandomBtn" disabled onclick="pickRandom()">Pick Random</button>
@@ -888,17 +1014,17 @@
     </div>
 
     <!-- RIGHT: BOARD -->
-    <div class="board-wrap">
+    <div class="board-wrap" role="main" aria-label="Game board">
 
       <div class="board-status">
         <div class="status-left">
           <div class="status-item">
-            <span class="status-dot" id="gameDot"></span>
+            <span class="status-dot" id="gameDot" aria-hidden="true"></span>
             <span id="gameState">IDLE</span>
           </div>
           <div class="status-item">
             <span>Seed</span>
-            <span class="status-val" id="seedDisplay">3f·a9·c1</span>
+            <span class="status-val" id="seedDisplay">—</span>
           </div>
         </div>
         <div class="status-right">
@@ -913,29 +1039,25 @@
         </div>
       </div>
 
-      <!-- Multiplier -->
       <div class="multiplier">
         <div class="multiplier-label">Current Multiplier</div>
         <div class="multiplier-val" id="multVal">1.00<span class="x">×</span></div>
         <div class="potential-row">
-          <span>Next Pick: <span class="val" id="nextMult">1.14×</span></span>
+          <span>Next: <span class="val" id="nextMult">1.14×</span></span>
           <span>Cashout: <span class="val" id="cashoutVal">$0.00</span></span>
         </div>
       </div>
 
-      <!-- The grid -->
       <div class="grid-container">
-        <div class="grid" id="grid"></div>
+        <div class="grid" id="grid" role="grid" aria-label="Mine field"></div>
       </div>
 
-      <!-- End state message -->
-      <div class="board-message" id="boardMsg">
-        <span id="msgText">WIN</span>
-        <span class="sub" id="msgSub">Cashed out</span>
+      <div class="board-message" id="boardMsg" role="status" aria-live="polite">
+        <span id="msgText"></span>
+        <span class="sub" id="msgSub"></span>
       </div>
 
-      <!-- History -->
-      <div class="history-strip">
+      <div class="history-strip" aria-label="Recent results">
         <span>Recent</span>
         <div class="history-items" id="history"></div>
       </div>
@@ -946,23 +1068,160 @@
 </div>
 
 <script>
-  // ===== State =====
+  // =========================================================
+  // 1. URL PARAMS
+  // =========================================================
+  const params = new URLSearchParams(location.search);
+  const SESSION_ID  = params.get('sessionID') || params.get('session') || '';
+  const RGS_URL     = params.get('rgs_url') || '';
+  const LANG        = params.get('lang') || 'en';
+  const DEVICE      = params.get('device') || 'desktop';
+  const IS_REPLAY   = params.get('replay') === 'true';
+
+  // Replay-specific params (no session required per spec)
+  const REPLAY_GAME    = params.get('game') || 'obsidian-mines';
+  const REPLAY_VERSION = params.get('version') || '1';
+  const REPLAY_MODE    = params.get('mode') || 'real';
+  const REPLAY_EVENT   = params.get('event') || '';
+  const REPLAY_CURRENCY = params.get('currency') || 'USD';
+  const REPLAY_AMOUNT  = parseInt(params.get('amount') || '0', 10);
+
+  const DEMO_MODE = !SESSION_ID || !RGS_URL;
+
+  // Apply device class
+  if (DEVICE === 'popout') document.body.classList.add('popout');
+  if (IS_REPLAY) document.body.classList.add('replay-mode');
+
+  // =========================================================
+  // 2. CURRENCY UTILITIES
+  // =========================================================
+  const PRECISION = 1_000_000; // 1,000,000 units = 1 currency unit
+
+  const CurrencyMeta = {
+    USD: { symbol: '$',    decimals: 2 },
+    EUR: { symbol: '€',    decimals: 2 },
+    GBP: { symbol: '£',    decimals: 2 },
+    CAD: { symbol: 'CA$',  decimals: 2 },
+    AUD: { symbol: 'AU$',  decimals: 2 },
+    NZD: { symbol: 'NZ$',  decimals: 2 },
+    CHF: { symbol: 'CHF',  decimals: 2 },
+    BRL: { symbol: 'R$',   decimals: 2 },
+    INR: { symbol: '₹',    decimals: 2 },
+    MXN: { symbol: 'MX$',  decimals: 2 },
+    PHP: { symbol: '₱',    decimals: 2 },
+    THB: { symbol: '฿',    decimals: 2 },
+    ZAR: { symbol: 'R',    decimals: 2 },
+    CNY: { symbol: '¥',    decimals: 2 },
+    JPY: { symbol: '¥',    decimals: 0 },
+    KRW: { symbol: '₩',    decimals: 0 },
+    IDR: { symbol: 'Rp',   decimals: 0 },
+    VND: { symbol: '₫',    decimals: 0, symbolAfter: true },
+    SEK: { symbol: 'SEK',  decimals: 2, symbolAfter: true },
+    NOK: { symbol: 'NOK',  decimals: 2, symbolAfter: true },
+    DKK: { symbol: 'KR',   decimals: 2, symbolAfter: true },
+    XGC: { symbol: 'GC',   decimals: 2 },
+    XSC: { symbol: 'SC',   decimals: 2 },
+  };
+
+  function unitsToFloat(units) { return units / PRECISION; }
+  function floatToUnits(amount) { return Math.round(amount * PRECISION); }
+
+  function displayAmount(units, currency) {
+    const meta = CurrencyMeta[currency] ?? { symbol: currency, decimals: 2, symbolAfter: true };
+    const formatted = unitsToFloat(units).toFixed(meta.decimals);
+    return meta.symbolAfter ? `${formatted} ${meta.symbol}` : `${meta.symbol}${formatted}`;
+  }
+
+  function fmtFloat(amount) {
+    return displayAmount(floatToUnits(amount), currentCurrency);
+  }
+
+  // =========================================================
+  // 3. RGS CLIENT
+  // =========================================================
+  let currentCurrency = IS_REPLAY ? REPLAY_CURRENCY : 'USD';
+  let betLevels = null; // { minBet, maxBet, stepBet } in units — from authenticate
+  let isLoading = false;
+
+  async function rgsPost(path, body) {
+    const resp = await fetch(`${RGS_URL}${path}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    if (!resp.ok) {
+      const msg = await resp.text().catch(() => resp.statusText);
+      throw new Error(`${path} failed (${resp.status}): ${msg}`);
+    }
+    return resp.json();
+  }
+
+  async function authenticate() {
+    return rgsPost('/wallet/authenticate', { sessionID: SESSION_ID });
+  }
+
+  async function play(amountUnits) {
+    return rgsPost('/wallet/play', {
+      sessionID: SESSION_ID,
+      amount: amountUnits,
+      gridSize: state.gridSize,
+      mines: state.mines,
+    });
+  }
+
+  async function endRound(winUnits) {
+    return rgsPost('/wallet/end-round', {
+      sessionID: SESSION_ID,
+      amount: winUnits,
+    });
+  }
+
+  async function saveEvent(eventData) {
+    return rgsPost('/bet/event', {
+      sessionID: SESSION_ID,
+      event: JSON.stringify(eventData),
+    });
+  }
+
+  async function fetchReplay(game, version, mode, event) {
+    const url = `${RGS_URL}/bet/replay/${game}/${version}/${mode}/${event}`;
+    const resp = await fetch(url);
+    if (!resp.ok) throw new Error(`Replay fetch failed (${resp.status})`);
+    return resp.json();
+  }
+
+  // Extract mine positions from various RGS round shapes
+  function parseMinePositions(round) {
+    const candidates = [round, ...(round?.state || []), ...(round?.events || [])];
+    for (const obj of candidates) {
+      if (!obj) continue;
+      if (Array.isArray(obj.minePositions)) return { positions: obj.minePositions, gridSize: obj.gridSize ?? state.gridSize };
+      if (Array.isArray(obj.mines))         return { positions: obj.mines,         gridSize: obj.gridSize ?? state.gridSize };
+      if (Array.isArray(obj.positions))     return { positions: obj.positions,     gridSize: obj.gridSize ?? state.gridSize };
+    }
+    return null;
+  }
+
+  // =========================================================
+  // 4. STATE
+  // =========================================================
   const state = {
-    gridSize: 5,       // 5,6,7,8
+    gridSize: 5,
     mines: 3,
-    bet: 10.00,
-    balance: 1250.00,
+    bet: 10.00,        // display float
+    balance: 1250.00,  // display float (demo only; real = from RGS)
     playing: false,
     ended: false,
     minePositions: new Set(),
     revealed: new Set(),
     history: [],
+    soundOn: true,
+    currentRound: null,
   };
 
-  // ===== Math: true Stake mines formula =====
-  // multiplier after k picks on N tiles with M mines, with 99% RTP:
-  //   mult = 0.99 * C(N, k) / C(N - M, k)
-  // i.e. inverse of probability of survival, scaled by RTP.
+  // =========================================================
+  // 5. MATH
+  // =========================================================
   function comb(n, k) {
     if (k < 0 || k > n) return 0;
     if (k === 0 || k === n) return 1;
@@ -977,7 +1236,31 @@
     return Math.ceil(0.99 * comb(N, k) / comb(N - M, k) * 100) / 100;
   }
 
-  // ===== Grid sizing =====
+  // =========================================================
+  // 6. LOADING / ERROR UI
+  // =========================================================
+  function showLoading(msg) {
+    isLoading = true;
+    document.getElementById('loadingText').textContent = msg || 'Please wait…';
+    document.getElementById('loadingOverlay').classList.add('show');
+  }
+  function hideLoading() {
+    isLoading = false;
+    document.getElementById('loadingOverlay').classList.remove('show');
+  }
+
+  let errorTimer = null;
+  function showError(msg) {
+    const el = document.getElementById('errorToast');
+    el.textContent = msg;
+    el.classList.add('show');
+    clearTimeout(errorTimer);
+    errorTimer = setTimeout(() => el.classList.remove('show'), 4000);
+  }
+
+  // =========================================================
+  // 7. GRID RENDERING
+  // =========================================================
   const gridEl = document.getElementById('grid');
 
   function renderGrid() {
@@ -986,16 +1269,15 @@
     gridEl.style.gridTemplateColumns = `repeat(${n}, 1fr)`;
     gridEl.style.gridTemplateRows = `repeat(${n}, 1fr)`;
     gridEl.innerHTML = '';
-    // Scale tile inner elements based on grid
-    const iconScale = n <= 5 ? 1 : n === 6 ? 0.82 : n === 7 ? 0.7 : 0.6;
     for (let i = 0; i < total; i++) {
       const tile = document.createElement('div');
       tile.className = 'tile';
       tile.dataset.idx = i;
+      tile.setAttribute('role', 'gridcell');
+      tile.setAttribute('aria-label', `Tile ${i + 1}`);
       tile.addEventListener('click', () => onTileClick(i));
       gridEl.appendChild(tile);
     }
-    // cap mines at total - 1
     const max = total - 1;
     document.getElementById('maxMines').textContent = max;
     const slider = document.getElementById('mineSlider');
@@ -1008,10 +1290,11 @@
     updateStats();
   }
 
-  // ===== Icons =====
-  function gemSVG(size = 42) {
-    // Rough-cut faceted gem with brass/teal
-    return `<svg class="gem-icon" width="${size}" height="${size}" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+  // =========================================================
+  // 8. ICONS
+  // =========================================================
+  function gemSVG(size) {
+    return `<svg class="gem-icon" width="${size}" height="${size}" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
       <defs>
         <linearGradient id="g1" x1="0" y1="0" x2="1" y2="1">
           <stop offset="0%" stop-color="#8ef7d4"/>
@@ -1026,12 +1309,10 @@
       <path d="M24 4 L40 18 L24 22 L8 18 Z" fill="url(#g2)"/>
       <path d="M24 4 L24 22" stroke="#e8ddc8" stroke-width="0.5" opacity="0.4"/>
       <path d="M8 18 L24 22 L40 18" stroke="#0b0d0f" stroke-width="0.5" opacity="0.3"/>
-      <path d="M24 22 L24 44" stroke="#0b0d0f" stroke-width="0.5" opacity="0.3"/>
     </svg>`;
   }
-  function mineSVG(size = 42) {
-    // Industrial explosive — spiked orb
-    return `<svg class="mine-icon" width="${size}" height="${size}" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+  function mineSVG(size) {
+    return `<svg class="mine-icon" width="${size}" height="${size}" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
       <defs>
         <radialGradient id="m1" cx="0.35" cy="0.3">
           <stop offset="0%" stop-color="#ff9a82"/>
@@ -1048,118 +1329,233 @@
       <circle cx="24" cy="24" r="13" fill="url(#m1)" stroke="#1a0808" stroke-width="1"/>
       <circle cx="20" cy="20" r="2.5" fill="#ffcfb8" opacity="0.8"/>
       <rect x="22" y="9" width="4" height="4" fill="#3a1a10" stroke="#1a0808"/>
-      <path d="M24 9 L24 6" stroke="#ff9a82" stroke-width="1.5"/>
     </svg>`;
   }
 
-  // ===== Primary action =====
+  function iconSize() {
+    const n = state.gridSize;
+    return n <= 5 ? 44 : n === 6 ? 36 : n === 7 ? 30 : 24;
+  }
+
+  // =========================================================
+  // 9. PRIMARY ACTION
+  // =========================================================
   const primaryBtn = document.getElementById('primaryBtn');
+
   function primaryAction() {
-    if (!state.playing || state.ended) {
-      startGame();
-    } else {
+    if (state.playing && !state.ended) {
       cashOut();
+    } else {
+      startGame();
     }
   }
 
-  function startGame() {
-    if (state.bet > state.balance) {
+  // =========================================================
+  // 10. START GAME
+  // =========================================================
+  async function startGame() {
+    if (DEMO_MODE && state.bet > state.balance) {
       flashMessage('INSUFFICIENT', 'loss', 'Balance too low');
-      setTimeout(() => hideMessage(), 1500);
+      setTimeout(hideMessage, 1500);
       return;
     }
-    state.balance -= state.bet;
-    state.playing = true;
-    state.ended = false;
+
     state.revealed.clear();
     state.minePositions.clear();
-    // Randomly place mines
-    const total = state.gridSize * state.gridSize;
-    while (state.minePositions.size < state.mines) {
-      state.minePositions.add(Math.floor(Math.random() * total));
+
+    if (!DEMO_MODE) {
+      showLoading('Placing bet…');
+      try {
+        const amountUnits = floatToUnits(state.bet);
+        const round = await play(amountUnits);
+        hideLoading();
+
+        // Parse mine positions from RGS response
+        const mineData = parseMinePositions(round);
+        if (mineData) {
+          state.minePositions = new Set(mineData.positions);
+          if (mineData.gridSize && mineData.gridSize !== state.gridSize) {
+            state.gridSize = mineData.gridSize;
+          }
+        }
+
+        // Update balance from RGS
+        if (round.balance !== undefined) {
+          state.balance = unitsToFloat(round.balance);
+        }
+        if (round.currency) currentCurrency = round.currency;
+
+        state.currentRound = round;
+
+        // Show round seed if provided
+        if (round.seed || round.hash) {
+          const seedStr = (round.seed || round.hash).toString().slice(0, 8);
+          document.getElementById('seedDisplay').textContent = seedStr;
+        }
+      } catch (err) {
+        hideLoading();
+        showError('Failed to start round: ' + err.message);
+        return;
+      }
+    } else {
+      // Demo mode: deduct locally, place mines randomly
+      state.balance -= state.bet;
+      const total = state.gridSize * state.gridSize;
+      while (state.minePositions.size < state.mines) {
+        state.minePositions.add(Math.floor(Math.random() * total));
+      }
+      const seed = Array.from({ length: 3 }, () =>
+        Math.floor(Math.random() * 256).toString(16).padStart(2, '0')
+      ).join('·');
+      document.getElementById('seedDisplay').textContent = seed;
     }
-    // Reset tiles
+
+    state.playing = true;
+    state.ended = false;
+
     renderGrid();
-    // Generate fake seed preview
-    const seed = Array.from({length: 3}, () => Math.floor(Math.random()*256).toString(16).padStart(2,'0')).join('·');
-    document.getElementById('seedDisplay').textContent = seed;
     updateUI();
     hideMessage();
+
+    window.dispatchEvent(new CustomEvent('roundActive', { detail: { active: true } }));
+    window.dispatchEvent(new CustomEvent('balanceUpdate', { detail: { balance: floatToUnits(state.balance), currency: currentCurrency } }));
   }
 
-  function cashOut() {
-    if (!state.playing || state.ended || state.revealed.size === 0) return;
-    const mult = multiplierAt(state.gridSize * state.gridSize, state.mines, state.revealed.size);
-    const winAmount = state.bet * mult;
-    state.balance += winAmount;
-    state.ended = true;
-    state.playing = false;
-    addHistory(mult, true);
-    // Reveal all
-    revealAll();
-    flashMessage(`+${mult.toFixed(2)}×`, 'win', `Won $${winAmount.toFixed(2)}`);
-    updateUI();
-  }
-
-  function onTileClick(idx) {
+  // =========================================================
+  // 11. TILE CLICK
+  // =========================================================
+  async function onTileClick(idx) {
     if (!state.playing || state.ended) return;
     if (state.revealed.has(idx)) return;
-    const tile = gridEl.children[idx];
-    state.revealed.add(idx);
-    tile.classList.add('revealed');
-    const n = state.gridSize;
-    const iconSize = n <= 5 ? 44 : n === 6 ? 36 : n === 7 ? 30 : 24;
+    if (isLoading) return;
 
-    if (state.minePositions.has(idx)) {
-      // MINE
+    const isMine = state.minePositions.has(idx);
+
+    // Save event to RGS for every tile click (reconnection support)
+    if (!DEMO_MODE) {
+      showLoading('Revealing…');
+      try {
+        await saveEvent({ type: 'reveal', index: idx, gridSize: state.gridSize, mines: state.mines });
+        hideLoading();
+      } catch (err) {
+        hideLoading();
+        showError('Connection error: ' + err.message);
+        return;
+      }
+    }
+
+    state.revealed.add(idx);
+    const tile = gridEl.children[idx];
+    tile.classList.add('revealed');
+    tile.setAttribute('aria-label', isMine ? 'Mine' : 'Gem');
+    const sz = iconSize();
+
+    if (isMine) {
       tile.classList.add('mine');
-      tile.innerHTML = mineSVG(iconSize);
+      tile.innerHTML = mineSVG(sz);
       state.ended = true;
       state.playing = false;
       addHistory(0, false);
+
+      // End round with 0 payout
+      if (!DEMO_MODE) {
+        endRound(0).catch(() => {/* best-effort */});
+      }
+
       setTimeout(() => {
         revealAll();
-        flashMessage('BUSTED', 'loss', `-$${state.bet.toFixed(2)}`);
+        flashMessage('BUSTED', 'loss', `−${fmtFloat(state.bet)}`);
       }, 300);
+
+      window.dispatchEvent(new CustomEvent('roundActive', { detail: { active: false } }));
     } else {
-      // GEM
       tile.classList.add('gem');
-      tile.innerHTML = gemSVG(iconSize);
+      tile.innerHTML = gemSVG(sz);
     }
+
     updateUI();
   }
 
+  // =========================================================
+  // 12. CASH OUT
+  // =========================================================
+  async function cashOut() {
+    if (!state.playing || state.ended || state.revealed.size === 0) return;
+    if (isLoading) return;
+
+    const N = state.gridSize * state.gridSize;
+    const mult = multiplierAt(N, state.mines, state.revealed.size);
+    const winFloat = state.bet * mult;
+    const winUnits = floatToUnits(winFloat);
+
+    if (!DEMO_MODE) {
+      showLoading('Cashing out…');
+      try {
+        const result = await endRound(winUnits);
+        hideLoading();
+        if (result.balance !== undefined) {
+          state.balance = unitsToFloat(result.balance);
+        }
+        if (result.currency) currentCurrency = result.currency;
+      } catch (err) {
+        hideLoading();
+        showError('Cash out failed: ' + err.message);
+        return;
+      }
+    } else {
+      state.balance += winFloat;
+    }
+
+    state.ended = true;
+    state.playing = false;
+    addHistory(mult, true);
+    revealAll();
+    flashMessage(`+${mult.toFixed(2)}×`, 'win', `Won ${fmtFloat(winFloat)}`);
+    updateUI();
+
+    window.dispatchEvent(new CustomEvent('roundActive', { detail: { active: false } }));
+    window.dispatchEvent(new CustomEvent('balanceUpdate', { detail: { balance: floatToUnits(state.balance), currency: currentCurrency } }));
+  }
+
+  // =========================================================
+  // 13. REVEAL ALL (end of round)
+  // =========================================================
   function revealAll() {
     const total = state.gridSize * state.gridSize;
-    const n = state.gridSize;
-    const iconSize = n <= 5 ? 44 : n === 6 ? 36 : n === 7 ? 30 : 24;
+    const sz = iconSize();
     for (let i = 0; i < total; i++) {
       const tile = gridEl.children[i];
       if (tile.classList.contains('revealed')) continue;
       tile.classList.add('revealed', 'unrevealed-end');
       if (state.minePositions.has(i)) {
         tile.classList.add('mine');
-        tile.innerHTML = mineSVG(iconSize);
+        tile.innerHTML = mineSVG(sz);
       } else {
         tile.classList.add('gem');
-        tile.innerHTML = gemSVG(iconSize);
+        tile.innerHTML = gemSVG(sz);
       }
     }
   }
 
+  // =========================================================
+  // 14. PICK RANDOM
+  // =========================================================
   function pickRandom() {
     if (!state.playing || state.ended) return;
     const total = state.gridSize * state.gridSize;
     const unrevealed = [];
-    for (let i = 0; i < total; i++) if (!state.revealed.has(i)) unrevealed.push(i);
+    for (let i = 0; i < total; i++) {
+      if (!state.revealed.has(i)) unrevealed.push(i);
+    }
     if (!unrevealed.length) return;
-    const pick = unrevealed[Math.floor(Math.random() * unrevealed.length)];
-    onTileClick(pick);
+    onTileClick(unrevealed[Math.floor(Math.random() * unrevealed.length)]);
   }
 
+  // =========================================================
+  // 15. RESET
+  // =========================================================
   function resetGame() {
     if (state.playing && !state.ended) {
-      // If mid-game, treat as forfeit -> just end without payout
       state.ended = true;
       state.playing = false;
       addHistory(0, false);
@@ -1168,52 +1564,59 @@
     state.minePositions.clear();
     state.ended = false;
     state.playing = false;
+    state.currentRound = null;
+    document.getElementById('seedDisplay').textContent = '—';
     renderGrid();
     hideMessage();
     updateUI();
   }
 
-  // ===== Flash messages =====
+  // =========================================================
+  // 16. FLASH MESSAGES
+  // =========================================================
   const msgEl = document.getElementById('boardMsg');
+  let msgTimer = null;
   function flashMessage(text, kind, sub) {
     msgEl.className = 'board-message show ' + kind;
     document.getElementById('msgText').textContent = text;
     document.getElementById('msgSub').textContent = sub || '';
-    setTimeout(() => hideMessage(), 2200);
+    clearTimeout(msgTimer);
+    msgTimer = setTimeout(hideMessage, 2400);
   }
-  function hideMessage() {
-    msgEl.className = 'board-message';
-  }
+  function hideMessage() { msgEl.className = 'board-message'; }
 
-  // ===== History =====
+  // =========================================================
+  // 17. HISTORY
+  // =========================================================
   function addHistory(mult, win) {
     state.history.unshift({ mult, win });
     if (state.history.length > 12) state.history.pop();
-    const hist = document.getElementById('history');
-    hist.innerHTML = state.history.map(h =>
+    document.getElementById('history').innerHTML = state.history.map(h =>
       `<div class="history-item ${h.win ? 'win' : 'loss'}">${h.win ? h.mult.toFixed(2) + '×' : 'BUST'}</div>`
     ).join('');
   }
 
-  // ===== UI updates =====
+  // =========================================================
+  // 18. UI UPDATE
+  // =========================================================
   function updatePayoutTable() {
     const N = state.gridSize * state.gridSize;
     const M = state.mines;
     const maxGems = N - M;
     const k = state.revealed.size;
-    const tbody = document.getElementById('payoutTable');
     let html = '';
     for (let i = 1; i <= maxGems; i++) {
       const mult = multiplierAt(N, M, i);
       const payout = state.bet * mult;
       const isCurrent = state.playing && !state.ended && i === k;
       const isPast = state.playing && !state.ended && i < k;
-      html += `<div class="payout-row${isCurrent ? ' current' : ''}${isPast ? ' future' : ''}">
+      html += `<div class="payout-row${isCurrent ? ' current' : ''}${isPast ? ' past' : ''}">
         <span class="gems">${i}</span>
         <span class="mult">${mult.toFixed(2)}×</span>
-        <span class="cashout">$${payout.toFixed(2)}</span>
+        <span class="cashout">${fmtFloat(payout)}</span>
       </div>`;
     }
+    const tbody = document.getElementById('payoutTable');
     tbody.innerHTML = html;
     if (k > 0 && k <= maxGems) {
       const rows = tbody.querySelectorAll('.payout-row');
@@ -1239,8 +1642,10 @@
 
   function updateUI() {
     // Balance
-    document.getElementById('balance').textContent = state.balance.toFixed(2);
-    document.getElementById('betUsd').textContent = '$' + state.bet.toFixed(2);
+    document.getElementById('balanceDisplay').textContent = fmtFloat(state.balance);
+
+    // Bet hint
+    document.getElementById('betHint').textContent = fmtFloat(state.bet);
 
     // Multiplier
     const total = state.gridSize * state.gridSize;
@@ -1249,9 +1654,9 @@
     const nextMult = multiplierAt(total, state.mines, k + 1);
     document.getElementById('multVal').innerHTML = curMult.toFixed(2) + '<span class="x">×</span>';
     document.getElementById('nextMult').textContent = isFinite(nextMult) ? nextMult.toFixed(2) + '×' : '—';
-    document.getElementById('cashoutVal').textContent = '$' + (state.bet * curMult).toFixed(2);
+    document.getElementById('cashoutVal').textContent = fmtFloat(state.bet * curMult);
 
-    // Game state dot + label
+    // Game state indicator
     const dot = document.getElementById('gameDot');
     const gs = document.getElementById('gameState');
     if (state.playing && !state.ended) {
@@ -1262,47 +1667,249 @@
       gs.textContent = state.ended ? 'ENDED' : 'IDLE';
     }
 
-    // Button state
+    // Primary button
     const pickBtn = document.getElementById('pickRandomBtn');
     if (state.playing && !state.ended && k > 0) {
-      primaryBtn.textContent = 'Cash Out  $' + (state.bet * curMult).toFixed(2);
+      primaryBtn.textContent = `Cash Out  ${fmtFloat(state.bet * curMult)}`;
       primaryBtn.classList.add('cashout');
+      primaryBtn.disabled = false;
       pickBtn.disabled = false;
     } else if (state.playing && !state.ended && k === 0) {
       primaryBtn.textContent = 'Pick a tile…';
-      primaryBtn.disabled = true;
       primaryBtn.classList.remove('cashout');
+      primaryBtn.disabled = true;
       pickBtn.disabled = false;
     } else {
       primaryBtn.textContent = 'Place Bet';
-      primaryBtn.disabled = false;
       primaryBtn.classList.remove('cashout');
+      primaryBtn.disabled = false;
       pickBtn.disabled = true;
     }
 
     updateStats();
     updatePayoutTable();
+    updateModalStats();
   }
 
-  // ===== Input wiring =====
-  // Mode toggle
-  document.querySelectorAll('.mode-toggle button').forEach(b => {
-    b.addEventListener('click', () => {
-      document.querySelectorAll('.mode-toggle button').forEach(x => x.classList.remove('active'));
-      b.classList.add('active');
+  // =========================================================
+  // 19. BET LEVEL CLAMPING
+  // =========================================================
+  function clampBet(amount) {
+    if (!betLevels) return Math.max(0.10, amount);
+    const minF = unitsToFloat(betLevels.minBet);
+    const maxF = unitsToFloat(betLevels.maxBet);
+    let v = Math.max(minF, Math.min(maxF, amount));
+    if (betLevels.stepBet) {
+      const step = unitsToFloat(betLevels.stepBet);
+      v = Math.round(v / step) * step;
+      v = Math.max(minF, Math.min(maxF, v));
+    }
+    return v;
+  }
+
+  // =========================================================
+  // 20. RECONNECTION
+  // =========================================================
+  async function reconnect(activeRound) {
+    const mineData = parseMinePositions(activeRound);
+    if (mineData) {
+      state.gridSize = mineData.gridSize;
+      state.minePositions = new Set(mineData.positions);
+    }
+
+    if (activeRound.mines)    state.mines   = activeRound.mines;
+    if (activeRound.gridSize) state.gridSize = activeRound.gridSize;
+    if (activeRound.betAmount !== undefined) state.bet = unitsToFloat(activeRound.betAmount);
+
+    const picks = activeRound.picks || activeRound.revealedTiles || [];
+    picks.forEach(idx => state.revealed.add(idx));
+
+    state.playing = true;
+    state.ended = false;
+    state.currentRound = activeRound;
+
+    renderGrid();
+
+    // Re-draw already-revealed tiles
+    const sz = iconSize();
+    picks.forEach(idx => {
+      const tile = gridEl.children[idx];
+      if (!tile) return;
+      tile.classList.add('revealed', 'gem');
+      tile.innerHTML = gemSVG(sz);
     });
+
+    updateUI();
+
+    window.dispatchEvent(new CustomEvent('roundActive', { detail: { active: true } }));
+  }
+
+  // =========================================================
+  // 21. REPLAY MODE
+  // =========================================================
+  async function initReplay() {
+    showLoading('Loading replay…');
+    try {
+      const data = await fetchReplay(REPLAY_GAME, REPLAY_VERSION, REPLAY_MODE, REPLAY_EVENT);
+      hideLoading();
+      await playReplay(data);
+    } catch (err) {
+      hideLoading();
+      showError('Failed to load replay: ' + err.message);
+    }
+  }
+
+  async function playReplay(data) {
+    // Support { round: {...} } or flat shape
+    const round = data.round || data;
+
+    const mineData = parseMinePositions(round);
+    if (mineData) {
+      state.gridSize = mineData.gridSize;
+      state.minePositions = new Set(mineData.positions);
+    }
+
+    // Set bet display from replay params or round data
+    if (REPLAY_AMOUNT) state.bet = unitsToFloat(REPLAY_AMOUNT);
+    else if (round.betAmount) state.bet = unitsToFloat(round.betAmount);
+
+    if (round.mines)    state.mines    = round.mines;
+    if (round.gridSize) state.gridSize = round.gridSize;
+
+    // Update grid selectors
+    document.querySelectorAll('.grid-option').forEach(o => {
+      o.classList.toggle('active', parseInt(o.dataset.size) === state.gridSize);
+    });
+    document.getElementById('mineInput').value  = state.mines;
+    document.getElementById('mineSlider').value = state.mines;
+
+    state.playing = true;
+    state.ended = false;
+
+    renderGrid();
+    updateUI();
+
+    // Step through picks
+    const picks = round.picks || round.sequence || [];
+    for (const pick of picks) {
+      await new Promise(r => setTimeout(r, 500));
+      const idx = typeof pick === 'number' ? pick : (pick.index ?? pick.tile);
+      await replayReveal(idx);
+    }
+
+    // Show outcome
+    const isBust = round.outcome === 'loss' || round.outcome === 'bust' || round.bust;
+    if (!isBust && state.revealed.size > 0) {
+      const mult = multiplierAt(state.gridSize * state.gridSize, state.mines, state.revealed.size);
+      revealAll();
+      flashMessage(`+${mult.toFixed(2)}×`, 'win', 'Cashed out');
+    }
+    updateUI();
+  }
+
+  async function replayReveal(idx) {
+    if (state.revealed.has(idx)) return;
+    state.revealed.add(idx);
+    const tile = gridEl.children[idx];
+    if (!tile) return;
+    tile.classList.add('revealed');
+    const isMine = state.minePositions.has(idx);
+    const sz = iconSize();
+    if (isMine) {
+      tile.classList.add('mine');
+      tile.innerHTML = mineSVG(sz);
+      state.ended = true;
+      state.playing = false;
+      setTimeout(() => {
+        revealAll();
+        flashMessage('BUSTED', 'loss', '');
+      }, 300);
+    } else {
+      tile.classList.add('gem');
+      tile.innerHTML = gemSVG(sz);
+    }
+    updateUI();
+  }
+
+  // =========================================================
+  // 22. MODAL
+  // =========================================================
+  function openModal() {
+    updateModalStats();
+    document.getElementById('modalBackdrop').classList.add('show');
+  }
+  function closeModal() {
+    document.getElementById('modalBackdrop').classList.remove('show');
+  }
+  document.getElementById('modalBackdrop').addEventListener('click', e => {
+    if (e.target === e.currentTarget) closeModal();
+  });
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') closeModal();
+  });
+
+  function updateModalStats() {
+    const N = state.gridSize * state.gridSize;
+    const M = state.mines;
+    const maxGems = N - M;
+    const maxMult = multiplierAt(N, M, maxGems);
+    const maxWin = isFinite(maxMult) ? maxMult * state.bet : 0;
+    document.getElementById('modalMaxMult').textContent = isFinite(maxMult) ? maxMult.toFixed(2) + '×' : '∞';
+    document.getElementById('modalMaxWin').textContent = isFinite(maxWin) ? fmtFloat(maxWin) : '∞';
+  }
+
+  // =========================================================
+  // 23. SOUND TOGGLE
+  // =========================================================
+  function toggleSound() {
+    state.soundOn = !state.soundOn;
+    const btn = document.getElementById('soundToggle');
+    document.getElementById('soundIconOn').style.display  = state.soundOn ? '' : 'none';
+    document.getElementById('soundIconOff').style.display = state.soundOn ? 'none' : '';
+    btn.classList.toggle('muted', !state.soundOn);
+    btn.setAttribute('aria-label', state.soundOn ? 'Mute sound' : 'Unmute sound');
+  }
+
+  // =========================================================
+  // 24. SPACEBAR → PRIMARY ACTION
+  // =========================================================
+  document.addEventListener('keydown', e => {
+    if (e.code === 'Space' && !e.target.matches('input, button, select, textarea')) {
+      e.preventDefault();
+      primaryAction();
+    }
+  });
+
+  // =========================================================
+  // 25. INPUT WIRING
+  // =========================================================
+  // Mode toggle
+  document.getElementById('modeManual').addEventListener('click', () => {
+    document.getElementById('modeManual').classList.add('active');
+    document.getElementById('modeAuto').classList.remove('active');
+  });
+  document.getElementById('modeAuto').addEventListener('click', () => {
+    document.getElementById('modeAuto').classList.add('active');
+    document.getElementById('modeManual').classList.remove('active');
   });
 
   // Bet input
   const betInput = document.getElementById('betInput');
-  betInput.addEventListener('input', () => {
-    const v = parseFloat(betInput.value) || 0;
-    state.bet = Math.max(0.10, v);
+  betInput.addEventListener('change', () => {
+    const v = clampBet(parseFloat(betInput.value) || 0.10);
+    state.bet = v;
+    betInput.value = v.toFixed(2);
     updateUI();
   });
+  betInput.addEventListener('input', () => {
+    const v = parseFloat(betInput.value) || 0;
+    if (v > 0) { state.bet = v; updateUI(); }
+  });
+
   function adjustBet(factor) {
-    state.bet = Math.max(0.10, state.bet * factor);
-    betInput.value = state.bet.toFixed(2);
+    const v = clampBet(state.bet * factor);
+    state.bet = v;
+    betInput.value = v.toFixed(2);
     updateUI();
   }
 
@@ -1311,23 +1918,30 @@
     opt.addEventListener('click', () => {
       if (state.playing && !state.ended) {
         flashMessage('LOCKED', 'loss', 'Finish round first');
-        setTimeout(() => hideMessage(), 1200);
+        setTimeout(hideMessage, 1200);
         return;
       }
-      document.querySelectorAll('.grid-option').forEach(o => o.classList.remove('active'));
+      document.querySelectorAll('.grid-option').forEach(o => {
+        o.classList.remove('active');
+        o.setAttribute('aria-checked', 'false');
+      });
       opt.classList.add('active');
+      opt.setAttribute('aria-checked', 'true');
       state.gridSize = parseInt(opt.dataset.size);
       renderGrid();
       updateUI();
     });
+    opt.addEventListener('keydown', e => {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); opt.click(); }
+    });
   });
 
-  // Mine input + slider
-  const mineInput = document.getElementById('mineInput');
+  // Mines input + slider
+  const mineInput  = document.getElementById('mineInput');
   const mineSlider = document.getElementById('mineSlider');
   mineInput.addEventListener('input', () => {
     const max = state.gridSize * state.gridSize - 1;
-    let v = Math.max(1, Math.min(max, parseInt(mineInput.value) || 1));
+    const v = Math.max(1, Math.min(max, parseInt(mineInput.value) || 1));
     state.mines = v;
     mineSlider.value = v;
     updateUI();
@@ -1345,9 +1959,78 @@
     updateUI();
   }
 
-  // ===== Init =====
-  renderGrid();
-  updateUI();
+  // =========================================================
+  // 26. BALANCE UPDATE LISTENER (from parent frame / ts-client)
+  // =========================================================
+  window.addEventListener('balanceUpdate', e => {
+    const { balance, currency } = e.detail || {};
+    if (balance !== undefined) state.balance = unitsToFloat(balance);
+    if (currency) currentCurrency = currency;
+    updateUI();
+  });
+
+  // =========================================================
+  // 27. INIT
+  // =========================================================
+  async function init() {
+    renderGrid();
+    updateUI();
+
+    if (IS_REPLAY) {
+      if (!RGS_URL || !REPLAY_EVENT) {
+        showError('Replay: rgs_url and event params required.');
+        return;
+      }
+      await initReplay();
+      return;
+    }
+
+    if (!DEMO_MODE) {
+      showLoading('Connecting…');
+      try {
+        const auth = await authenticate();
+        hideLoading();
+
+        // Apply currency + balance
+        if (auth.currency) currentCurrency = auth.currency;
+        if (auth.balance !== undefined) state.balance = unitsToFloat(auth.balance);
+
+        // Apply bet levels
+        if (auth.betLevels) {
+          betLevels = auth.betLevels;
+          const minF = unitsToFloat(betLevels.minBet);
+          const maxF = unitsToFloat(betLevels.maxBet);
+          // Show bet range hint
+          const rangeEl = document.getElementById('betRange');
+          rangeEl.textContent = `Min ${fmtFloat(minF)} · Max ${fmtFloat(maxF)}`;
+          rangeEl.classList.add('show');
+          // Set bet input limits
+          betInput.min  = minF;
+          betInput.max  = maxF;
+          betInput.step = betLevels.stepBet ? unitsToFloat(betLevels.stepBet) : 0.01;
+          // Clamp current bet
+          state.bet = clampBet(state.bet);
+          betInput.value = state.bet.toFixed(2);
+        }
+
+        // Reconnect if there's an active round
+        if (auth.round && auth.round.active) {
+          await reconnect(auth.round);
+        } else {
+          updateUI();
+        }
+
+        window.dispatchEvent(new CustomEvent('balanceUpdate', {
+          detail: { balance: floatToUnits(state.balance), currency: currentCurrency },
+        }));
+      } catch (err) {
+        hideLoading();
+        showError('Failed to connect: ' + err.message);
+      }
+    }
+  }
+
+  init();
 </script>
 
 </body>
