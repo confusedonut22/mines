@@ -834,7 +834,6 @@
     .board-wrap { padding: 10px 12px; }
     .multiplier-val { font-size: 28px; }
     .stats { display: none; }
-    .mode-toggle { display: none; }
   }
 
   /* Mobile S (≤340px) */
@@ -857,14 +856,12 @@
   body.popout .logo { font-size: 15px; }
   body.popout .payout-table-wrap { display: none; }
   body.popout .stats { display: none; }
-  body.popout .mode-toggle { display: none; }
 
   /* ===== REPLAY MODE ===== */
   /* Hide elements the spec says to hide in replay */
   body.replay-mode .balance { display: none; }
   body.replay-mode #primaryBtn,
   body.replay-mode .btn-split,
-  body.replay-mode .mode-toggle,
   body.replay-mode .field:has(#betInput) { display: none; }
   body.replay-mode .panel { pointer-events: none; }
   body.replay-mode .replay-watch-btn { pointer-events: all; }
@@ -881,6 +878,51 @@
     border-color: var(--brass);
   }
   .hidden { display: none !important; }
+
+  /* ===== RTP INFO ===== */
+  .rtp-info {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 10px;
+    background: rgba(61, 217, 180, 0.05);
+    border: 1px solid rgba(61, 217, 180, 0.15);
+    margin-bottom: 8px;
+  }
+  .rtp-badge {
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    color: var(--gem);
+    background: rgba(61, 217, 180, 0.12);
+    padding: 2px 6px;
+    border-radius: 2px;
+    white-space: nowrap;
+  }
+  .rtp-edge {
+    font-size: 9px;
+    color: var(--ink-faint);
+    letter-spacing: 0.03em;
+  }
+
+  /* ===== SESSION P&L ===== */
+  .session-stats {
+    padding: 6px 10px;
+    background: var(--bg-2);
+    border: 1px solid var(--line);
+    margin-bottom: 8px;
+  }
+  .session-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 10px;
+    padding: 2px 0;
+    color: var(--ink-dim);
+  }
+  .session-pnl-win  { color: var(--gem); }
+  .session-pnl-loss { color: var(--mine); }
+  .session-pnl-neutral { color: var(--ink-dim); }
 </style>
 </head>
 <body>
@@ -965,11 +1007,6 @@
 
     <!-- LEFT PANEL -->
     <div class="panel">
-
-      <div class="mode-toggle">
-        <button class="active" id="modeManual">Manual</button>
-        <button id="modeAuto">Auto</button>
-      </div>
 
       <!-- Bet amount -->
       <div class="field">
@@ -1062,7 +1099,7 @@
         </div>
         <div class="slider-wrap">
           <input type="range" min="1" max="24" value="3" class="slider" id="mineSlider" aria-label="Mines slider">
-          <div class="slider-scale"><span>SAFE</span><span>BALANCED</span><span>DEGEN</span></div>
+          <div class="slider-scale"><span>SAFE</span><span>BALANCED</span><span>HIGH RISK</span></div>
         </div>
       </div>
 
@@ -1075,6 +1112,24 @@
         <div class="stat">
           <div class="stat-label">Next Tile Odds</div>
           <div class="stat-val accent" id="nextOddsStat">88.0%</div>
+        </div>
+      </div>
+
+      <!-- RTP info — visible transparency per safer product blueprint -->
+      <div class="rtp-info">
+        <span class="rtp-badge">99% RTP</span>
+        <span class="rtp-edge">1% house edge · Provably fair</span>
+      </div>
+
+      <!-- Session P&L tracker -->
+      <div class="session-stats" id="sessionStats">
+        <div class="session-row">
+          <span>Session</span>
+          <span id="sessionRounds">0 rounds</span>
+        </div>
+        <div class="session-row">
+          <span>Net P&L</span>
+          <span id="sessionPnl" class="session-pnl-neutral">$0.00</span>
         </div>
       </div>
 
@@ -1343,6 +1398,8 @@
     history: [],
     soundOn: true,
     currentRound: null,
+    sessionRounds: 0,
+    sessionNetPnl: 0,  // running net P&L this session (float)
   };
 
   // =========================================================
@@ -1585,6 +1642,7 @@
       state.ended = true;
       state.playing = false;
       addHistory(0, false);
+      recordSessionResult(-state.bet);
 
       // End round with 0 payout
       if (!DEMO_MODE) {
@@ -1593,7 +1651,7 @@
 
       setTimeout(() => {
         revealAll();
-        flashMessage('BUSTED', 'loss', `−${fmtFloat(state.bet)}`);
+        flashMessage('BUSTED', 'loss', `Bet ${fmtFloat(state.bet)} · Net −${fmtFloat(state.bet)}`);
       }, 300);
 
       window.dispatchEvent(new CustomEvent('roundActive', { detail: { active: false } }));
@@ -1638,11 +1696,13 @@
       state.balance += winFloat;
     }
 
+    const netGain = winFloat - state.bet;
     state.ended = true;
     state.playing = false;
     addHistory(mult, true);
+    recordSessionResult(netGain);
     revealAll();
-    flashMessage(`+${mult.toFixed(2)}×`, 'win', `Won ${fmtFloat(winFloat)}`);
+    flashMessage(`+${mult.toFixed(2)}×`, 'win', `Bet ${fmtFloat(state.bet)} · Won ${fmtFloat(winFloat)} · Net +${fmtFloat(netGain)}`);
     updateUI();
 
     window.dispatchEvent(new CustomEvent('roundActive', { detail: { active: false } }));
@@ -1754,6 +1814,26 @@
       const rows = tbody.querySelectorAll('.payout-row');
       if (rows[k - 1]) rows[k - 1].scrollIntoView({ block: 'nearest' });
     }
+  }
+
+  // =========================================================
+  // SESSION P&L TRACKING
+  // =========================================================
+  function recordSessionResult(netChange) {
+    state.sessionRounds += 1;
+    state.sessionNetPnl += netChange;
+    updateSessionDisplay();
+  }
+
+  function updateSessionDisplay() {
+    const roundsEl = document.getElementById('sessionRounds');
+    const pnlEl    = document.getElementById('sessionPnl');
+    if (!roundsEl || !pnlEl) return;
+    roundsEl.textContent = `${state.sessionRounds} round${state.sessionRounds !== 1 ? 's' : ''}`;
+    const pnl = state.sessionNetPnl;
+    pnlEl.textContent = (pnl >= 0 ? '+' : '') + fmtFloat(Math.abs(pnl));
+    pnlEl.className = pnl > 0 ? 'session-pnl-win' : pnl < 0 ? 'session-pnl-loss' : 'session-pnl-neutral';
+    if (pnl < 0) pnlEl.textContent = '−' + fmtFloat(Math.abs(pnl));
   }
 
   function updateStats() {
@@ -2042,15 +2122,7 @@
   // =========================================================
   // 25. INPUT WIRING
   // =========================================================
-  // Mode toggle
-  document.getElementById('modeManual').addEventListener('click', () => {
-    document.getElementById('modeManual').classList.add('active');
-    document.getElementById('modeAuto').classList.remove('active');
-  });
-  document.getElementById('modeAuto').addEventListener('click', () => {
-    document.getElementById('modeAuto').classList.add('active');
-    document.getElementById('modeManual').classList.remove('active');
-  });
+  // Auto mode removed — autoplay flagged as regulatory harm risk
 
   // Bet input
   const betInput = document.getElementById('betInput');
